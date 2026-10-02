@@ -36,7 +36,7 @@ Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI pa
 ## Phase 2: Frontend live view (UF1, UF2, UF8, UF9)
 
 - [x] Vite + React app scaffold: routes, AppShell, dev proxy to the mock ([apps/web](../../apps/web/README.md))
-- [ ] r3f scene: Sun, Mercury, Venus, Earth, L1 from astronomy-engine
+- [x] r3f scene: Sun, Mercury, Venus, Earth, L1 from astronomy-engine; readable / true scale toggle; camera presets; WebGL fallback ([scene-plan.md](frontend/scene-plan.md))
 - [x] `useLiveStream`: snapshot/delta apply, `seq` gap → resync, backoff, polling fallback (tested against the mock's chaos modes)
 - [x] Zustand live store (Float64Array series, 7 days) + IndexedDB cache
 - [x] ConnectionBadge and FreshnessBadge; `DataAge` next to values (`FeedStatus.staleAfterS` added to the contract)

@@ -99,3 +99,11 @@ table.kv th { width: 160px; }
 .seg button:hover { color: var(--text); }
 .seg button[aria-checked="true"], .seg button[aria-pressed="true"] { color: var(--text); background: var(--line); }
 .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.scene-fallback { padding: 24px 16px; max-width: 560px; }
+.scene-fallback h2 { margin-top: 0; }
+@media (max-width: 640px) {
+  .scene-controls { top: 8px; right: 8px; left: 8px; justify-content: flex-start; }
+  .seg button { padding: 6px 10px; }
+  .hud { left: 8px; right: 8px; bottom: 8px; max-width: none; }
+}

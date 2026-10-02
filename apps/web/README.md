@@ -38,6 +38,7 @@ src/
   lib/ephemeris.ts         Mercury, Venus, Earth, L1 positions (astronomy-engine, J2000 ecliptic, AU)
   scene/                   SceneCanvas (lazy chunk), SunMesh, PlanetBodies, OrbitLines, L1Probe, CameraRig
   hud/SceneControls.tsx    Readable / True scale toggle, Overview / Top / Earth camera
+  hud/SceneFallback.tsx    no WebGL / scene failed: the same positions as a table (+ SceneBoundary)
 ```
 
 Still to come: `hud/` charts (uPlot). Scene design and decisions: [scene-plan.md](../../docs/design/frontend/scene-plan.md).
@@ -70,5 +71,5 @@ Try it: open `/status` and use the mock's control page (http://localhost:8787/mo
 - [x] Step 1: scaffold, routes, dev proxy to the mock, `/status` page reading `GET /api/v1/health`
 - [x] Step 2: Zustand store + `useLiveStream` + IndexedDB cache; `/status` reads the live store
 - [x] Step 3: ConnectionBadge + FreshnessBadge + DataAge
-- [x] Step 4: 3D scene (Sun, Mercury, Venus, Earth, L1), scale toggle, camera presets (4d robustness pending)
+- [x] Step 4: 3D scene (Sun, Mercury, Venus, Earth, L1), scale toggle, camera presets, WebGL fallback
 - [ ] Step 5: XrayChart + WindPanel

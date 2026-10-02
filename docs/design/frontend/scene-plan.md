@@ -26,7 +26,7 @@ Part of [PLAN.md](../PLAN.md) Phase 2. Goal: the Live page shows the Sun, Mercur
 | ✅ **4a** | `lib/ephemeris.ts`: body positions, L1, orbit paths, Earth-facing direction; unit tests | Earth lies on the −X axis at the March equinox and on +Z at the June solstice (±0.5°, the J2000 frame offset); orbits run counter-clockwise from above; L1 is 0.01 AU from Earth |
 | ✅ **4b** | `scene/`: SceneCanvas (lazy), SunMesh, PlanetBodies, OrbitLines, L1Probe, labels, OrbitControls, star backdrop; Live page layout | `/` renders the scene from the store clock with no console errors; other routes don't load three.js |
 | ✅ **4c** | `store/ui.ts` + ScaleToggle + CameraRig (animated radii and camera presets) | Toggle switches scale smoothly; choice survives reload |
-| **4d** | Robustness: WebGL fallback, pause when hidden, reduced motion, dpr cap, phone layout | Fallback shows when WebGL is off; no horizontal scroll at 390 px |
+| ✅ **4d** | Robustness: WebGL fallback, pause when hidden, reduced motion, dpr cap, phone layout | Fallback shows when WebGL is off; no horizontal scroll at 390 px |
 
 ## Not in step 4
 
@@ -41,3 +41,4 @@ Headless Chromium renders WebGL in software, so frame rate measured here is mean
 - r3f 8 logs a one-time `THREE.Clock … deprecated` warning with three 0.186. It is harmless and goes away with r3f 9 (which needs React 19).
 - Found while checking 4b: the ConnectionBadge stayed on "Connecting…" at real-time speed, because the client only went live on the first message and a quiet server sends nothing for up to a minute. It now goes live when the socket opens.
 - 4c: camera presets are Overview, Top (true geometry, orbits as circles) and Earth (behind and beside Earth, looking sunward, following Earth along its orbit). At true scale a ring marks each planet and L1, since they are smaller than a pixel.
+- 4d, measured in headless Chromium: with the scene running, 5 React commits in 5 s (the 1 s age tickers) against 125 animation frames, so the 3D loop does not re-render React. WebGL off → text fallback with the same positions, and the scene chunk is never downloaded. Scene chunk blocked → error boundary shows the same fallback. On portrait screens the Overview and Top cameras pull back so Earth's orbit fits across.

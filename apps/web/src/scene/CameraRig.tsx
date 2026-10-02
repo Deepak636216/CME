@@ -11,8 +11,10 @@ type Controls = ElementRef<typeof OrbitControls>;
 const DURATION_S = 0.9;
 
 /** Where the camera and its target go for a view. Recomputed every frame while flying, since Earth moves. */
-function preset(view: View, scale: Scale, p: Positions): { pos: Vector3; target: Vector3 } {
-  if (view === "top") return { pos: new Vector3(0, 2.7, 0.0001), target: new Vector3() };
+function preset(view: View, scale: Scale, p: Positions, aspect: number): { pos: Vector3; target: Vector3 } {
+  // Overview and Top frame Earth's orbit; a portrait screen is narrow, so pull back until it fits across.
+  const fit = Math.max(1, 1.6 / aspect);
+  if (view === "top") return { pos: new Vector3(0, 2.7 * fit, 0.0001), target: new Vector3() };
   if (view === "earth") {
     // Behind Earth, off to the side and a little above the ecliptic, looking back at the Sun: the way a CME
     // would arrive. The side offset keeps part of Earth's day side in view.
@@ -23,7 +25,7 @@ function preset(view: View, scale: Scale, p: Positions): { pos: Vector3; target:
     const pos = earth.clone().addScaledVector(out, d).addScaledVector(side, d * 0.6).add(new Vector3(0, d * 0.35, 0));
     return { pos, target: earth };
   }
-  return { pos: new Vector3(0, 1.25, 1.75), target: new Vector3() };
+  return { pos: new Vector3(0, 1.25, 1.75).multiplyScalar(fit), target: new Vector3() };
 }
 
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -36,6 +38,8 @@ const ease = (k: number) => (k < 0.5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2);
 export function CameraRig() {
   const controls = useRef<Controls>(null);
   const camera = useThree((s) => s.camera);
+  const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height));
+  const portrait = aspect < 1;
   const view = useUi((s) => s.view);
   const nonce = useUi((s) => s.viewNonce);
   const scale = useUi((s) => s.scale);
@@ -46,7 +50,7 @@ export function CameraRig() {
     const c = controls.current;
     if (!c) return;
     flight.current = { from: camera.position.clone(), fromTarget: c.target.clone(), t: reducedMotion() ? DURATION_S : 0 };
-  }, [view, nonce, scale, camera]);
+  }, [view, nonce, scale, camera, portrait]);
 
   useEffect(() => {
     const c = controls.current;
@@ -66,7 +70,7 @@ export function CameraRig() {
     if (f) {
       f.t = Math.min(DURATION_S, f.t + dt);
       const k = ease(f.t / DURATION_S);
-      const dest = preset(view, scale, p);
+      const dest = preset(view, scale, p, aspect);
       camera.position.lerpVectors(f.from, dest.pos, k);
       c.target.lerpVectors(f.fromTarget, dest.target, k);
       if (f.t >= DURATION_S) flight.current = null;
