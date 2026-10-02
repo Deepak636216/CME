@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import { SceneControls } from "../hud/SceneControls.tsx";
 
 const SceneCanvas = lazy(() => import("../scene/SceneCanvas.tsx"));
 
@@ -10,6 +11,7 @@ export function LivePage() {
           <SceneCanvas />
         </Suspense>
       </div>
+      <SceneControls />
       <aside className="hud muted">X-ray chart and solar wind panel arrive in step 5.</aside>
     </div>
   );

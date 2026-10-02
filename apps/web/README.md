@@ -34,9 +34,13 @@ src/
   lib/api.ts               getJson(), serverNow() (data time comes from the server clock)
   lib/clock.ts             useServerNow(): one shared 1 s ticker for every age display
   lib/freshness.ts         fresh / stale / unknown rules, formatAge()
+  store/ui.ts              uiSlice: scale (saved), camera view
+  lib/ephemeris.ts         Mercury, Venus, Earth, L1 positions (astronomy-engine, J2000 ecliptic, AU)
+  scene/                   SceneCanvas (lazy chunk), SunMesh, PlanetBodies, OrbitLines, L1Probe, CameraRig
+  hud/SceneControls.tsx    Readable / True scale toggle, Overview / Top / Earth camera
 ```
 
-Still to come: `scene/` (r3f), `hud/` charts (uPlot).
+Still to come: `hud/` charts (uPlot). Scene design and decisions: [scene-plan.md](../../docs/design/frontend/scene-plan.md).
 
 ## How the live stream behaves
 
@@ -66,5 +70,5 @@ Try it: open `/status` and use the mock's control page (http://localhost:8787/mo
 - [x] Step 1: scaffold, routes, dev proxy to the mock, `/status` page reading `GET /api/v1/health`
 - [x] Step 2: Zustand store + `useLiveStream` + IndexedDB cache; `/status` reads the live store
 - [x] Step 3: ConnectionBadge + FreshnessBadge + DataAge
-- [ ] Step 4: 3D scene (Sun, Mercury, Venus, Earth, L1)
+- [x] Step 4: 3D scene (Sun, Mercury, Venus, Earth, L1), scale toggle, camera presets (4d robustness pending)
 - [ ] Step 5: XrayChart + WindPanel

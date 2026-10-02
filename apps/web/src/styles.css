@@ -85,3 +85,17 @@ table.kv th { width: 160px; }
   text-shadow: 0 0 4px #000, 0 0 2px #000; user-select: none;
 }
 .scene-label small { display: block; color: var(--muted); font-size: 10px; }
+
+.scene-marker {
+  position: absolute; width: 10px; height: 10px; transform: translate(-50%, -50%);
+  border: 2px solid; border-radius: 50%; box-shadow: 0 0 4px #000;
+}
+.scene-controls { position: absolute; top: 12px; right: 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--panel) 85%, transparent); }
+.seg button {
+  font: inherit; font-size: 0.85rem; color: var(--muted); background: none; border: 0; padding: 6px 12px; cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button:hover { color: var(--text); }
+.seg button[aria-checked="true"], .seg button[aria-pressed="true"] { color: var(--text); background: var(--line); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }

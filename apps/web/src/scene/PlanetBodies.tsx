@@ -1,20 +1,26 @@
 import { useRef } from "react";
-import type { Group } from "three";
+import type { Group, Mesh } from "three";
 import { PLANETS, type PlanetInfo } from "../lib/ephemeris.ts";
+import { useUi } from "../store/ui.ts";
 import { useFramePositions } from "./time.ts";
-import { READABLE_RADIUS } from "./sizes.ts";
+import { drawnRadius } from "./sizes.ts";
 import { Label } from "./Labels.tsx";
 
 function Planet({ info }: { info: PlanetInfo }) {
   const group = useRef<Group>(null);
-  useFramePositions((p) => group.current?.position.set(...p[info.id]));
+  const mesh = useRef<Mesh>(null);
+  const trueScale = useUi((s) => s.scale === "true");
+  useFramePositions((p) => {
+    group.current?.position.set(...p[info.id]);
+    mesh.current?.scale.setScalar(drawnRadius(info.id));
+  });
   return (
     <group ref={group} name={info.id}>
-      <mesh>
-        <sphereGeometry args={[READABLE_RADIUS[info.id], 32, 16]} />
+      <mesh ref={mesh}>
+        <sphereGeometry args={[1, 32, 16]} />
         <meshStandardMaterial color={info.color} roughness={0.9} metalness={0} />
       </mesh>
-      <Label text={info.label} />
+      <Label text={info.label} marker={trueScale ? info.color : null} />
     </group>
   );
 }
