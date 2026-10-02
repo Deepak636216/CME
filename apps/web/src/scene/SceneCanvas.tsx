@@ -7,6 +7,7 @@ import { OrbitLines } from "./OrbitLines.tsx";
 import { L1Probe } from "./L1Probe.tsx";
 import { CameraRig } from "./CameraRig.tsx";
 import { SunEarthLine } from "./SunEarthLine.tsx";
+import { CmeShells } from "./CmeShells.tsx";
 
 /**
  * The Sun → Earth scene (UF1). Loaded lazily, so pages without it never download three.js.
@@ -29,6 +30,7 @@ export default function SceneCanvas() {
       <SunMesh />
       <OrbitLines />
       <PlanetBodies />
+      <CmeShells />
       <SunEarthLine />
       <L1Probe />
       <CameraRig />

@@ -3,6 +3,7 @@ import { SceneBoundary } from "../hud/SceneBoundary.tsx";
 import { SceneClock } from "../hud/SceneClock.tsx";
 import { SceneControls } from "../hud/SceneControls.tsx";
 import { SceneKey } from "../hud/SceneKey.tsx";
+import { CmeCard } from "../hud/CmeCard.tsx";
 import { PanelBoundary } from "../hud/PanelBoundary.tsx";
 import { SceneFallback } from "../hud/SceneFallback.tsx";
 import { hasWebGL } from "../lib/webgl.ts";
@@ -30,6 +31,7 @@ export function LivePage() {
           <SceneClock />
           <SceneControls />
           <SceneKey />
+          <CmeCard />
         </>
       ) : (
         <SceneClock />

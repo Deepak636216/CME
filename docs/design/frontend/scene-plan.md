@@ -75,3 +75,11 @@ From the design review (Understand, P1):
 - **Labels**: one priority pass (the flare first, then regions biggest first); a label that would overlap one already placed is hidden, and the flaring region's own label gives way to the flare label. Region labels need the Sun ≥ 115 px in radius on screen; the flare label ≥ 40 px.
 - **Sun camera view**: from Earth's side, aimed a little below centre so the disc sits above the data panels.
 - Not modelled: the B0 and P tilts of the solar axis as seen from Earth (up to 7° and 26°).
+
+## Phase 3: CMEs
+
+- **Shells** (`scene/CmeShells.tsx`, `lib/cme.ts`): the ice-cream-cone model: a spherical cap (cone half-angle from DONKI) drawn additive and brighter toward its silhouette like a coronagraph CME, on a faint cone back to the Sun. Orange = Earth-directed, blue = misses Earth.
+- **Direction**: lat/lon are relative to the Sun–Earth line *at launch*; the CME then moves radially in that fixed direction (the Sun's rotation does not carry it).
+- **Distance**: `dbmAt()` every frame with the forecast's γ and w, the same function the server used for the ETA, so the front reaches 1 AU exactly at `forecast.eta` (tested, with matching arrival speed). Before the DONKI time (21.5 Rs) it is extrapolated back at launch speed so it appears from the flare site. Drawn from 1.5 Rs to 1.6 AU, dimming with distance.
+- **Card** (`hud/CmeCard.tsx`): up to two CMEs in flight, Earth-directed first: source flare and region, width, speed now, distance, and for Earth-directed ones the arrival time (UTC), countdown and arrival speed. On phones: one compact strip under the clock.
+- **Labels**: only the CMEs the cards list, once the front is clear of the Sun on screen, never over a higher-priority label.

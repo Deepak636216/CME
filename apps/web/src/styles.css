@@ -77,7 +77,7 @@ table.kv th { width: 160px; }
 /* HUD data panels (step 5): a strip along the bottom of the scene */
 .live { --hud-h: 232px; }
 /* Overlays sit above the 3D labels (drei Html uses z-index 0–10) */
-.hud, .scene-clock, .scene-controls, .scene-key, .scene-key-toggle { z-index: 20; }
+.hud, .scene-clock, .scene-controls, .scene-key, .scene-key-toggle, .cme-cards { z-index: 20; }
 .hud {
   position: absolute; left: 12px; right: 12px; bottom: 12px; height: var(--hud-h);
   display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px;
@@ -251,3 +251,35 @@ table.kv th { width: 160px; }
 .flare-label small { color: #ffe2b0; }
 .region-label, .flare-label { background: rgba(5, 7, 12, 0.62); padding: 2px 6px; border-radius: 4px; }
 .region-label small, .flare-label small { color: #d6c3a0; }
+
+/* CME cards (top right, under the camera controls) */
+.cme-cards { position: absolute; top: 58px; right: 12px; width: 300px; display: flex; flex-direction: column; gap: 8px; }
+.cme-card {
+  padding: 10px 12px; font-size: 0.8rem; background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; gap: 6px;
+}
+.cme-card.earth { border-color: color-mix(in srgb, #ff9a5c 55%, transparent); }
+.cme-card header { display: flex; align-items: center; gap: 8px; }
+.cme-card h2 { margin: 0; font-size: 0.9rem; }
+.cme-dot { width: 10px; height: 10px; border-radius: 50%; background: #9cc4ff; flex: none; }
+.cme-card.earth .cme-dot { background: #ff9a5c; }
+.cme-from { margin: 0; color: var(--muted); }
+.cme-card dl { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+.cme-card dl .wide { grid-column: 1 / -1; }
+.cme-card dt { color: var(--muted); font-size: 0.72rem; }
+.cme-card dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cme-count { font-weight: 400; color: var(--muted); }
+.cme-label span { color: #cfe0ff; }
+.cme-label.earth span { color: #ffc49c; font-weight: 600; }
+.cme-label { background: rgba(5, 7, 12, 0.55); padding: 2px 6px; border-radius: 4px; }
+.sw-cme { height: 12px; border-radius: 12px 12px 3px 3px; background: radial-gradient(ellipse at 50% 10%, #ff9a5c 0 35%, rgba(156, 196, 255, 0.6) 60%, rgba(0,0,0,0) 75%); }
+@media (max-width: 1100px) { .cme-cards { top: 104px; } }
+@media (max-width: 640px) {
+  /* phones: one compact strip under the clock: what, when, how long */
+  .cme-cards { top: 182px; right: 8px; left: 8px; width: auto; }
+  .cme-cards .cme-card + .cme-card { display: none; }
+  .cme-card { padding: 6px 10px; gap: 2px; }
+  .cme-card .cme-from, .cme-card dl > div:not(.wide) { display: none; }
+  .cme-card dl { display: block; }
+  .cme-card dt { display: none; }
+}

@@ -41,6 +41,10 @@ export function SceneKey() {
           Flare: pulses while rising, fades after it ends
         </li>
         <li>
+          <span className="sw sw-cme" aria-hidden />
+          CME cloud: orange heads for Earth, blue misses
+        </li>
+        <li>
           <span className="sw sw-planet" aria-hidden />
           Planet where it is right now; lit side faces the Sun
         </li>

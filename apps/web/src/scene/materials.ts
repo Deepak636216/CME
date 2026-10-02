@@ -346,3 +346,43 @@ void main() {
 `,
   });
 }
+
+/**
+ * CME: the ice-cream-cone model. The front is a spherical cap (cone half-angle ω) drawn additive and brighter
+ * toward its silhouette, like the bright loop of a CME in a coronagraph image, with fbm structure. The flank
+ * (`flank` = true) is the faint cone back to the Sun. Object space: unit sphere, cone axis +Y.
+ */
+export function createCmeMaterial(flank: boolean): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uColor: { value: new Color("#9cc4ff") }, uFade: { value: 1 }, uCosHalf: { value: 0.5 }, uTime: { value: 0 } },
+    defines: { FLANK: flank ? 1 : 0 },
+    transparent: true,
+    depthWrite: false,
+    side: 2, // DoubleSide
+    blending: AdditiveBlending,
+    vertexShader: VERT_SURFACE,
+    fragmentShader: /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform vec3 uColor; uniform float uFade; uniform float uCosHalf; uniform float uTime;
+varying vec3 vObj; varying vec3 vNormalW; varying vec3 vPosW;
+${NOISE}
+void main() {
+  #include <logdepthbuf_fragment>
+  float n = 0.55 + 0.9 * fbm(vObj * 5.0 + vec3(0.0, uTime * 0.03, 0.0));
+#if FLANK
+  // faint cone: fades in away from the Sun and toward the front
+  float along = clamp(length(vObj) / 1.0, 0.0, 1.0);
+  float a = 0.07 * smoothstep(0.05, 0.7, along) * n * uFade;
+#else
+  vec3 N = normalize(vNormalW);
+  vec3 V = normalize(cameraPosition - vPosW);
+  float rim = pow(1.0 - abs(dot(N, V)), 2.0);
+  float edge = smoothstep(uCosHalf, uCosHalf + 0.18 * (1.0 - uCosHalf) + 0.01, vObj.y);  // soft cap edge
+  float a = (0.10 + 0.85 * rim) * n * edge * uFade;
+#endif
+  gl_FragColor = vec4(uColor * a, 1.0);
+}
+`,
+  });
+}
