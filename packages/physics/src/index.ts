@@ -67,10 +67,15 @@ const CLASSES: [string, number][] = [["X", 1e-4], ["M", 1e-5], ["C", 1e-6], ["B"
 
 export function classFromFlux(flux: number): string {
   if (!(flux > 0)) return "A0.0";
-  for (const [letter, base] of CLASSES) {
-    if (flux >= base) return letter + (flux / base).toFixed(1);
+  // Round within the class first: 9.96e-6 reads M1.0, never C10.0. X is open-ended (X10, X28.4 …).
+  for (let k = 0; k < CLASSES.length; k++) {
+    const [letter, base] = CLASSES[k];
+    if (flux < base && k < CLASSES.length - 1) continue;
+    const r = Math.round((flux / base) * 10) / 10;
+    if (r >= 10 && k > 0) return CLASSES[k - 1][0] + (r / 10).toFixed(1);
+    return letter + r.toFixed(1);
   }
-  return "A" + (flux / 1e-8).toFixed(1);
+  return "A0.0";
 }
 
 export function fluxFromClass(cls: string): number {

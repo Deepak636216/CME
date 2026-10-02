@@ -39,6 +39,10 @@ test("Newell: zero for northward Bz, large for southward", () => {
 test("flare class round trip", () => {
   assert.equal(classFromFlux(2.5e-6), "C2.5");
   assert.equal(classFromFlux(1.2e-4), "X1.2");
+  assert.equal(classFromFlux(9.96e-6), "M1.0", "rounds up into the next class, never C10.0");
+  assert.equal(classFromFlux(9.94e-6), "C9.9");
+  assert.equal(classFromFlux(2.84e-3), "X28.4", "X is open-ended and keeps its decimal");
+  assert.equal(classFromFlux(5e-9), "A0.5", "below A1.0 stays A");
   assert.equal(fluxFromClass("M3.4"), 3.4e-5);
   assert.equal(classFromFlux(fluxFromClass("X2.1")), "X2.1");
 });

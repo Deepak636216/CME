@@ -47,7 +47,10 @@ public/textures/           NASA Earth maps (384 kB WebP); see CREDITS.md
   hud/SceneFallback.tsx    no WebGL / scene failed: the same positions as a table (+ SceneBoundary)
 ```
 
-Still to come: `hud/` charts (uPlot). Scene design and decisions: [scene-plan.md](../../docs/design/frontend/scene-plan.md).
+  hud/charts/               XrayChart, WindPanel (uPlot, lazy chunk), shared crosshair, table views
+  hud/PanelBoundary.tsx    a failing panel never takes the page down
+  lib/chartData.ts         windowing with gap breaks, peak, hover row, table rows
+  lib/format.ts            flux (3.4×10⁻⁶) and Bz (never −0.0) formatting Scene design and decisions: [scene-plan.md](../../docs/design/frontend/scene-plan.md).
 
 ## How the live stream behaves
 
@@ -78,4 +81,16 @@ Try it: open `/status` and use the mock's control page (http://localhost:8787/mo
 - [x] Step 2: Zustand store + `useLiveStream` + IndexedDB cache; `/status` reads the live store
 - [x] Step 3: ConnectionBadge + FreshnessBadge + DataAge
 - [x] Step 4: 3D scene (Sun, Mercury, Venus, Earth, L1), scale toggle, camera presets, WebGL fallback
-- [ ] Step 5: XrayChart + WindPanel
+- [x] Step 5: XrayChart + WindPanel
+
+## Data panels (step 5)
+
+| Panel | What it shows | How to read it without a mouse |
+|---|---|---|
+| Solar X-rays | GOES long (sets the flare class) and short channels, last 6 h, log scale with A/B/C/M/X bands; M and X washed in their status colours; headline = class now + 6 h peak | Focus the chart, then ← / → step through readings, Esc clears; or **Table** (every 15 min) |
+| Solar wind at L1 | Speed, density, Bz (with North / South / ⚠ Strongly south at ≤ −10 nT) and Newell coupling, each with a 6 h trend; headline line = how long this wind takes from L1 to Earth | **Table** (every 15 min) |
+
+- One crosshair for all charts: hover any of them and every value reads "at HH:MM".
+- Charts redraw once a second (the 6 h window slides with the server clock); the 3D scene runs independently.
+- Colours: series slots 1–2 of the dataviz reference palette (dark steps), validated on the HUD surface `#131824` (CVD ΔE 26.8, ≥ 3:1). Status colours only for flare-class severity and southward Bz, always with a label.
+- Phones: the two panels become tabs (Solar wind first).

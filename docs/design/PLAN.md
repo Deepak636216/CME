@@ -40,7 +40,8 @@ Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI pa
 - [x] `useLiveStream`: snapshot/delta apply, `seq` gap → resync, backoff, polling fallback (tested against the mock's chaos modes)
 - [x] Zustand live store (Float64Array series, 7 days) + IndexedDB cache
 - [x] ConnectionBadge and FreshnessBadge; `DataAge` next to values (`FeedStatus.staleAfterS` added to the contract)
-- [ ] XrayChart and WindPanel (uPlot, ≤ 1 Hz)
+- [x] XrayChart and WindPanel (uPlot, ≤ 1 Hz): flare-class bands, synced crosshair, keyboard reading, table views; Newell coupling shown (FR-5)
+- [x] Design-review P1s: real Sun/Earth surfaces, scene clock, Sun–Earth travel times, Key ([scene-plan.md](frontend/scene-plan.md))
 - **Done when:** a cold load is interactive in < 2 s and runs at 60 fps; pulling the network cable and reconnecting catches up with no reload.
 
 ## Phase 3: Sun & CME physics (UC6, UF3, UF4, UF5)
