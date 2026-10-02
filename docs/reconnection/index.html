@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reconnection to CME Guide</title>
+<meta name="description" content="A beginner-friendly, live-data guide to how magnetic reconnection powers solar flares and CMEs, and what this project simulates.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.3/plotly.min.js"></script>
+<script src="data/snapshot.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #fcfcfb; --surface: #ffffff; --surface-2: #f3f2ef; --surface-3: #eceae5;
+  --ink: #111110; --ink-2: #52514e; --muted: #85847e; --rule: #e4e3df;
+  --accent: #eb6834; --accent-tint: rgba(235,104,52,0.10);
+  --link: #2a78d6;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+  --live: #0f8a5f; --live-tint: rgba(27,175,122,0.13);
+  --cat: #2a78d6; --cat-tint: rgba(42,120,214,0.12);
+  --model: #a86f00; --model-tint: rgba(237,161,0,0.16);
+  --plain-tint: rgba(42,120,214,0.07);
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #141413; --surface: #1c1c1a; --surface-2: #242422; --surface-3: #2e2e2b;
+    --ink: #f5f4ef; --ink-2: #c3c2b7; --muted: #8f8e86; --rule: #34332f;
+    --accent: #e8773f; --accent-tint: rgba(232,119,63,0.14);
+    --link: #6aa7f0;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+    --live: #3cc48f; --live-tint: rgba(25,158,112,0.20);
+    --cat: #6aa7f0; --cat-tint: rgba(57,135,229,0.18);
+    --model: #e0a53a; --model-tint: rgba(201,133,0,0.22);
+    --plain-tint: rgba(57,135,229,0.10);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141413; --surface: #1c1c1a; --surface-2: #242422; --surface-3: #2e2e2b;
+  --ink: #f5f4ef; --ink-2: #c3c2b7; --muted: #8f8e86; --rule: #34332f;
+  --accent: #e8773f; --accent-tint: rgba(232,119,63,0.14);
+  --link: #6aa7f0;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  --live: #3cc48f; --live-tint: rgba(25,158,112,0.20);
+  --cat: #6aa7f0; --cat-tint: rgba(57,135,229,0.18);
+  --model: #e0a53a; --model-tint: rgba(201,133,0,0.22);
+  --plain-tint: rgba(57,135,229,0.10);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.65 Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--link); }
+h1, h2, h3 { line-height: 1.25; margin: 0; }
+h1 { font-family: "Source Serif 4", Georgia, serif; font-weight: 600; font-size: clamp(1.8rem, 3vw, 2.4rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.3rem; font-weight: 700; margin: 2.2rem 0 0.7rem; }
+h3 { font-size: 1.05rem; font-weight: 600; margin: 1.4rem 0 0.4rem; }
+p { margin: 0.6rem 0; }
+code, .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.92em; }
+img { max-width: 100%; height: auto; }
+
+/* ---------- layout ---------- */
+.shell { display: grid; grid-template-columns: 270px minmax(0, 1fr); min-height: 100vh; }
+nav.side {
+  min-width: 0;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  border-right: 1px solid var(--rule); background: var(--surface-2); padding: 22px 14px;
+}
+.brand { font-family: "Source Serif 4", Georgia, serif; font-weight: 600; font-size: 1.15rem; padding: 0 10px 4px; }
+.brand-sub { color: var(--muted); font-size: 0.8rem; padding: 0 10px 16px; }
+.navgroup { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 14px 10px 4px; }
+nav.side a {
+  display: flex; gap: 10px; align-items: baseline; padding: 6px 10px; border-radius: 6px;
+  color: var(--ink-2); text-decoration: none; font-size: 0.92rem;
+}
+nav.side a .n { font-family: "IBM Plex Mono", monospace; font-size: 0.75rem; color: var(--muted); min-width: 1.4em; }
+nav.side a:hover { background: var(--surface-3); color: var(--ink); }
+nav.side a.active { background: var(--accent-tint); color: var(--ink); font-weight: 600; }
+nav.side a.active .n { color: var(--accent); }
+.theme-btn {
+  margin: 18px 10px 0; font: inherit; font-size: 0.82rem; color: var(--ink-2); background: var(--surface);
+  border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; cursor: pointer;
+}
+.datastatus { margin: 12px 10px 0; font-size: 0.78rem; color: var(--muted); }
+
+main { padding: 36px 48px 80px; max-width: 980px; width: 100%; }
+.page { display: none; }
+.page.active { display: block; animation: fade 0.25s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .page.active { animation: none; } html { scroll-behavior: auto; } }
+.eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+.lede { font-size: 1.12rem; color: var(--ink-2); margin: 12px 0 8px; max-width: 70ch; }
+.pager { display: flex; justify-content: space-between; gap: 12px; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--rule); }
+.pager a { text-decoration: none; padding: 10px 14px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface); color: var(--ink); font-size: 0.92rem; max-width: 48%; }
+.pager a small { display: block; color: var(--muted); font-size: 0.75rem; }
+.pager a:hover { border-color: var(--accent); }
+
+/* ---------- mobile ---------- */
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  main { min-width: 0; }
+  nav.side { position: sticky; top: 0; z-index: 10; height: auto; display: flex; gap: 4px; overflow-x: auto; padding: 8px 12px; border-right: 0; border-bottom: 1px solid var(--rule); }
+  .brand, .brand-sub, .navgroup, .datastatus { display: none; }
+  nav.side a { white-space: nowrap; font-size: 0.85rem; }
+  .theme-btn { margin: 0; white-space: nowrap; }
+  main { padding: 24px 16px 60px; }
+}
+
+/* ---------- components ---------- */
+.box { border-radius: var(--radius); padding: 14px 16px; margin: 16px 0; border: 1px solid var(--rule); background: var(--surface); }
+.box > .label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+.plain { background: var(--plain-tint); border-color: transparent; }
+.plain > .label { color: var(--s1); }
+.analogy { background: var(--surface-2); border-color: transparent; }
+.analogy > .label { color: var(--ink-2); }
+.try { background: var(--accent-tint); border-color: transparent; }
+.try > .label { color: var(--accent); }
+.takeaway { border-left: 4px solid var(--accent); background: var(--surface); }
+.takeaway > .label { color: var(--accent); }
+.box p:first-of-type { margin-top: 0; }
+.box p:last-child { margin-bottom: 0; }
+
+.formula {
+  font-family: "IBM Plex Mono", monospace; font-size: 1.08rem; background: var(--surface-2);
+  border-radius: 6px; padding: 12px 16px; margin: 12px 0; overflow-x: auto; white-space: nowrap;
+}
+.formula .where { display: block; font-family: Inter, sans-serif; font-size: 0.85rem; color: var(--ink-2); white-space: normal; margin-top: 6px; }
+
+.badge { display: inline-block; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; padding: 2px 7px; border-radius: 4px; vertical-align: 2px; text-transform: uppercase; }
+.badge.live { background: var(--live-tint); color: var(--live); }
+.badge.cat { background: var(--cat-tint); color: var(--cat); }
+.badge.model { background: var(--model-tint); color: var(--model); }
+.badge.const { background: var(--surface-3); color: var(--ink-2); }
+
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; margin: 12px 0; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.table-wrap { overflow-x: auto; }
+
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 18px 0; }
+.tile { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 14px; }
+.tile .k { font-size: 0.78rem; color: var(--ink-2); }
+.tile .v { font-size: 1.6rem; font-weight: 700; margin: 2px 0; font-variant-numeric: tabular-nums; }
+.tile .s { font-size: 0.78rem; color: var(--muted); }
+
+.chart { width: 100%; min-height: 320px; margin: 10px 0 4px; }
+.caption { font-size: 0.85rem; color: var(--ink-2); margin: 4px 0 18px; }
+figure { margin: 18px 0; }
+figure img { border: 1px solid var(--rule); border-radius: var(--radius); background: #fff; }
+
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px 20px; margin: 12px 0; }
+.ctl label { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--ink-2); }
+.ctl label b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.ctl input[type=range] { width: 100%; accent-color: var(--accent); }
+select, input[type=search] { font: inherit; font-size: 0.9rem; background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; width: 100%; }
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.ro { background: var(--surface-2); border-radius: 6px; padding: 8px 12px; }
+.ro .k { font-size: 0.75rem; color: var(--ink-2); }
+.ro .v { font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.verdict { font-weight: 600; padding: 10px 14px; border-radius: 6px; background: var(--surface-2); margin: 8px 0; }
+
+.steps { counter-reset: step; position: relative; margin: 24px 0; }
+.step { position: relative; padding: 0 0 26px 58px; }
+.step::before {
+  counter-increment: step; content: counter(step);
+  position: absolute; left: 0; top: 0; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--surface); border: 2px solid var(--accent); color: var(--accent);
+  display: grid; place-items: center; font-weight: 700;
+}
+.step::after { content: ""; position: absolute; left: 19px; top: 40px; bottom: 2px; width: 2px; background: var(--rule); }
+.step:last-child::after { display: none; }
+.step h3 { margin: 6px 0 8px; font-size: 1.12rem; }
+.step .q { font-style: italic; color: var(--ink-2); margin: 0 0 8px; }
+.io { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.io > div { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 10px 12px; font-size: 0.9rem; }
+.io .h { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+.io .wide { grid-column: 1 / -1; }
+@media (max-width: 600px) { .io { grid-template-columns: 1fr; } }
+
+.cards { display: grid; gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 16px 18px; }
+.card h3 { margin: 0 0 4px; }
+.card .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.card dl { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; margin: 10px 0 0; font-size: 0.9rem; }
+.card dt { color: var(--muted); font-weight: 600; font-size: 0.8rem; }
+.card dd { margin: 0; }
+@media (max-width: 600px) { .card dl { grid-template-columns: 1fr; } .card dt { margin-top: 6px; } }
+.chip { font: inherit; font-size: 0.82rem; border: 1px solid var(--rule); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.chip.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+
+.xpoint-wrap { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px; }
+canvas#xpoint { width: 100%; height: 340px; display: block; }
+.dial-wrap { display: grid; grid-template-columns: 220px 1fr; gap: 18px; align-items: center; }
+@media (max-width: 600px) { .dial-wrap { grid-template-columns: 1fr; } }
+
+dl.gloss dt { font-weight: 700; margin-top: 12px; }
+dl.gloss dd { margin: 2px 0 0; color: var(--ink-2); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 700px) { .two { grid-template-columns: 1fr; } }
+ol.refs li { margin: 6px 0; font-size: 0.92rem; }
+.impact { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin: 16px 0 6px; position: relative; }
+.imp { background: var(--surface); border: 1px solid var(--rule); padding: 14px; display: flex; flex-direction: column; gap: 2px; position: relative; }
+.imp:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.imp:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+.imp + .imp { border-left: 0; }
+.imp .ico, .icongrid .ico { font-size: 1.6rem; line-height: 1.2; }
+.imp .when { font-family: "IBM Plex Mono", monospace; font-size: 0.8rem; color: var(--accent); font-weight: 500; }
+.imp span, .icongrid span, .strip span { font-size: 0.86rem; color: var(--ink-2); line-height: 1.45; }
+.icongrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 14px 0; }
+.icongrid > div { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 3px; }
+.strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; counter-reset: none; }
+.strip > div { background: var(--surface); border: 1px solid var(--rule); border-top: 3px solid var(--s2); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 3px; }
+.strip .num { font-family: "IBM Plex Mono", monospace; color: var(--s2); font-weight: 600; }
+@media (max-width: 700px) { .impact, .strip { grid-template-columns: 1fr; } .imp + .imp { border-left: 1px solid var(--rule); border-top: 0; } .imp:first-child { border-radius: var(--radius) var(--radius) 0 0; } .imp:last-child { border-radius: 0 0 var(--radius) var(--radius); } }
+.ladder { position: relative; display: flex; flex-direction: column-reverse; gap: 6px; margin: 14px 0 4px; }
+.rung { width: var(--w); min-width: 190px; max-width: 100%; background: linear-gradient(90deg, var(--surface-3), var(--accent-tint)); border-left: 4px solid var(--s2); border-radius: 4px; padding: 6px 10px; display: flex; gap: 10px; align-items: baseline; font-size: 0.86rem; }
+.rung b { font-size: 1.05rem; min-width: 1em; }
+.rung span { color: var(--ink-2); }
+.rung.here { outline: 2px solid var(--s2); }
+.rung .tag { margin-left: auto; font-weight: 700; color: var(--s2); white-space: nowrap; }
+svg.l1 { width: 100%; height: auto; display: block; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); margin: 10px 0 4px; }
+
+</style>
+</head>
+<body>
+<div class="shell">
+<nav class="side" id="nav">
+  <div class="brand">☀ Reconnection → CME</div>
+  <div class="brand-sub">A beginner's guide to the science and the simulator</div>
+  <div class="navgroup">Start</div>
+  <a href="#start"><span class="n">00</span>Start here</a>
+  <a href="#problem"><span class="n">01</span>The problem</a>
+  <div class="navgroup">The science</div>
+  <a href="#engine"><span class="n">02</span>The Sun's magnetic engine</a>
+  <a href="#reconnection"><span class="n">03</span>Magnetic reconnection</a>
+  <a href="#flare"><span class="n">04</span>The flare</a>
+  <a href="#cme"><span class="n">05</span>The CME's journey</a>
+  <a href="#earth"><span class="n">06</span>Arrival at Earth</a>
+  <div class="navgroup">The application</div>
+  <a href="#flow"><span class="n">07</span>How the application works</a>
+  <a href="#variables"><span class="n">08</span>Variables &amp; formulas</a>
+  <a href="#data"><span class="n">09</span>Data sources</a>
+  <a href="#roadmap"><span class="n">10</span>Development roadmap</a>
+  <div class="navgroup">Beyond</div>
+  <a href="#future"><span class="n">11</span>Future: ML, LLM &amp; agents</a>
+  <a href="#glossary"><span class="n">12</span>Glossary &amp; references</a>
+  <button class="theme-btn" id="themeBtn" type="button">◐ Switch theme</button>
+  <div class="datastatus" id="dataStatus">Loading data…</div>
+</nav>
+
+<main>
+
+<!-- =============================================================== 00 START -->
+<section class="page" id="start">
+  <div class="eyebrow">00 · Start here</div>
+  <h1>How the Sun turns magnetism into explosions, simulated live</h1>
+  <p class="lede">This guide explains, from zero, the physics behind solar flares and coronal mass ejections (CMEs), and how this project simulates the whole chain using real data from NOAA and NASA satellites.</p>
+
+  <div class="box plain">
+    <div class="label">In plain words</div>
+    <p>The Sun is covered in magnetic fields that get twisted like rubber bands. When two oppositely pointing field lines are squeezed together, they suddenly <b>snap and re-join</b>. This is called <b>magnetic reconnection</b>. The snap releases huge energy in minutes:</p>
+    <p>⬇ energy going <b>down</b> heats the surface into a <b>flare</b> (a flash of X-rays) · ⬆ the magnetic bubble going <b>up</b> is thrown into space as a <b>CME</b>. If the CME hits Earth with the right magnetic orientation, it reconnects <i>again</i> with Earth's field, causing storms and aurora.</p>
+  </div>
+
+  <h2>The Sun right now</h2>
+  <div class="tiles" id="liveTiles"></div>
+  <p class="caption">Each value is labelled with where it comes from: <span class="badge live">Live</span> measured in real time · <span class="badge cat">Catalogue</span> analysed by NASA within hours · <span class="badge model">Model</span> calculated by our simulator.</p>
+
+  <h2>The whole story in one picture</h2>
+  <figure>
+    <img src="images/diagram_sun_earth_chain.png" alt="Flow from stored magnetic energy to reconnection, then flare and CME, CME travel, arrival at L1, reconnection at Earth and geomagnetic storm, with the data feed for each stage">
+  </figure>
+  <p class="caption">Orange stages happen on the Sun (minutes), blue in space (days) and green at Earth (hours). Dashed boxes show which live data feeds each stage.</p>
+
+  <h2>How to read this guide</h2>
+  <div class="table-wrap"><table>
+    <tr><th>If you want to…</th><th>Read</th></tr>
+    <tr><td>Understand why this project exists</td><td><a href="#problem">01 The problem</a></td></tr>
+    <tr><td>Learn the science step by step (no background needed)</td><td><a href="#engine">02</a> → <a href="#reconnection">03</a> → <a href="#flare">04</a> → <a href="#cme">05</a> → <a href="#earth">06</a></td></tr>
+    <tr><td>Understand what the application does, stage by stage</td><td><a href="#flow">07 How the application works</a></td></tr>
+    <tr><td>Look up a symbol or formula</td><td><a href="#variables">08 Variables &amp; formulas</a></td></tr>
+    <tr><td>Start building</td><td><a href="#data">09 Data</a>, <a href="#roadmap">10 Roadmap</a></td></tr>
+    <tr><td>Find a research or ML project to build on top</td><td><a href="#future">11 Future scope</a></td></tr>
+  </table></div>
+  <div class="box try"><div class="label">Tip</div><p>Every chart is interactive: hover for values, drag to zoom, double-click to reset. Pages 02–06 have sliders, so change a number and watch the physics respond.</p></div>
+  <div class="pager"><span></span><a href="#problem"><small>Next</small>01 · The problem →</a></div>
+</section>
+
+<!-- =============================================================== 01 PROBLEM -->
+<section class="page" id="problem">
+  <div class="eyebrow">01 · The problem</div>
+  <h1>Why simulate magnetic reconnection?</h1>
+  <p class="lede">The most important process in space weather cannot be seen directly, and the evidence it leaves behind is scattered across agencies in formats that are hard to read.</p>
+
+  <h2>One event, three waves of impact</h2>
+  <div class="impact">
+    <div class="imp"><div class="ico">⚡</div><div class="when">+8 minutes</div><b>X-ray flash</b><span>Radio blackouts: aviation, ships, emergency radio</span></div>
+    <div class="imp"><div class="ico">☢</div><div class="when">+30 min – hours</div><b>Energetic particles</b><span>Astronauts, satellite electronics, polar flights</span></div>
+    <div class="imp"><div class="ico">🌀</div><div class="when">+1 – 4 days</div><b>CME impact</b><span>Power grids, GPS, satellite drag, <b>aurora</b></span></div>
+  </div>
+  <p class="caption">All three start with a <b>single reconnection event</b> on the Sun.</p>
+
+  <h2>What makes it hard</h2>
+  <div class="icongrid">
+    <div><div class="ico">👁</div><b>Invisible cause</b><span>The current sheet is km-thin. We only see its effects.</span></div>
+    <div><div class="ico">🧩</div><b>Scattered evidence</b><span>GOES, DONKI and L1 each use their own format and clock.</span></div>
+    <div><div class="ico">🔢</div><b>Numbers without meaning</b><span>"C3.1" or "Bz = −2 nT" say nothing to a beginner.</span></div>
+    <div><div class="ico">⛓</div><b>No causal story</b><span>No tool links reconnection → flare → CME → Earth.</span></div>
+    <div><div class="ico">📄</div><b>Physics stuck in papers</b><span>The formulas exist but aren't wired to live data.</span></div>
+  </div>
+
+  <h2>Problem statement</h2>
+  <div class="box takeaway"><div class="label">Problem statement</div>
+  <p><b>Build a live, interactive simulator that explains and models the chain from magnetic reconnection on the Sun to flares, CMEs and their effect on Earth.</b> Drive every stage with real-time satellite data where a measurement exists, use transparent physics models where it doesn't, and label clearly which is which, so that a beginner can understand the event and a researcher can reuse the data.</p></div>
+
+  <h2>Goals</h2>
+  <ol>
+    <li><b>Explain</b> reconnection visually: inflow, X-point, outflow.</li>
+    <li><b>Measure</b> what can be measured live: flare X-rays, solar wind and the magnetic field at L1.</li>
+    <li><b>Infer</b> what can't be seen: the reconnection rate, hidden inside the flare curve.</li>
+    <li><b>Link</b> the stages in time: reconnection → flare → CME launch → CME trip → Earth coupling.</li>
+    <li><b>Let people experiment</b> with sliders for things no one can measure in real time.</li>
+    <li><b>Produce a clean event dataset</b> that ML, LLM and agent projects can build on (<a href="#future">page 11</a>).</li>
+  </ol>
+
+  <h2>Who it is for</h2>
+  <div class="table-wrap"><table>
+    <tr><th>User</th><th>What they need from it</th></tr>
+    <tr><td>Beginners &amp; students</td><td>An intuitive answer to "why does a flare happen, and why should I care?"</td></tr>
+    <tr><td>Educators</td><td>A live classroom demo tied to today's Sun</td></tr>
+    <tr><td>Data scientists</td><td>A tidy, labelled, time-aligned event dataset</td></tr>
+    <tr><td>Researchers</td><td>Quick "what if" checks: arrival time, coupling strength</td></tr>
+    <tr><td>Aurora watchers</td><td>"Is something coming, and when?"</td></tr>
+  </table></div>
+
+  <h2>Scope of version 1</h2>
+  <div class="two">
+    <div class="box"><div class="label" style="color:var(--live)">In scope</div>
+      <p>✓ 2D reconnection animation and rate models<br>✓ Live GOES flare curve and reconnection proxy<br>✓ Model of CME launch linked to the flare<br>✓ CME arrival time using live solar wind<br>✓ Live Earth coupling and storm estimate<br>✓ Export of the linked event timeline</p></div>
+    <div class="box"><div class="label" style="color:var(--muted)">Out of scope (for now)</div>
+      <p>✗ Full 3D magnetohydrodynamic simulation<br>✗ Official forecasts or warnings<br>✗ Solar image processing (SDO/SOHO)<br>✗ Predicting the CME's internal Bz<br>✗ Ground effects (grid currents)</p></div>
+  </div>
+
+  <h2>How we'll know it works</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Criterion</th><th>Measure</th></tr>
+    <tr><td>Correct physics</td><td>Reproduces every worked example on <a href="#variables">page 08</a> within 1%</td></tr>
+    <tr><td>Live</td><td>Updates within 2 minutes of new NOAA data</td></tr>
+    <tr><td>Understandable</td><td>A beginner can explain the chain after 5 minutes with the tool</td></tr>
+    <tr><td>Honest</td><td>Every number carries a Live / Catalogue / Model label</td></tr>
+    <tr><td>Reusable</td><td>One-click export of the linked timeline (JSON/CSV)</td></tr>
+  </table></div>
+  <div class="pager"><a href="#start"><small>Previous</small>← 00 · Start here</a><a href="#engine"><small>Next</small>02 · The Sun's magnetic engine →</a></div>
+</section>
+
+<!-- =============================================================== 02 ENGINE -->
+<section class="page" id="engine">
+  <div class="eyebrow">02 · The science, part 1</div>
+  <h1>The Sun's magnetic engine</h1>
+  <p class="lede">Before anything explodes, energy has to be stored. On the Sun it is stored in twisted magnetic fields.</p>
+
+  <h2>Plasma: the fourth state of matter</h2>
+  <p>The Sun's outer atmosphere, the <b>corona</b>, is at 1–2 million °C. At that temperature atoms are ripped apart into charged ions and electrons. This is called <b>plasma</b>. Because plasma is made of charged particles, it conducts electricity extremely well, and so it is tied to magnetic fields.</p>
+  <div class="box analogy"><div class="label">Analogy · beads on a string</div><p>In a plasma, field lines behave like strings and the plasma like beads threaded on them. Beads can slide <i>along</i> a string but can't jump to another one. Physicists call this <b>"frozen-in" flux</b>. It's why the plasma in the corona traces out the magnetic field in beautiful loops.</p></div>
+
+  <h2>Who is in charge: gas or magnetism?</h2>
+  <p>Compare the pressure of the hot gas with the "pressure" of the magnetic field. Their ratio is called <b>plasma beta (β)</b>:</p>
+  <div class="formula">β = gas pressure / magnetic pressure = 2 n k_B T / (B² / 2μ₀)<span class="where">In the corona β ≈ 0.001, so the magnetic field is about 1,000× stronger than the gas and pushes the plasma around, not the other way round.</span></div>
+
+  <h2>Winding up the rubber band</h2>
+  <p>Sunspots are the footpoints of strong magnetic fields. As they move, rotate and emerge, the field above them gets <b>twisted and sheared</b>, like winding up a rubber band. The energy stored in the field is:</p>
+  <div class="formula">E = (B² / 2μ₀) × Volume ≈ B² L³ / (2μ₀)<span class="where">B = field strength, L = size of the region, μ₀ = a constant of nature (4π × 10⁻⁷). Doubling B gives <b>4×</b> the energy, and doubling L gives <b>8×</b>.</span></div>
+
+  <div class="box try"><div class="label">Try it · the energy calculator</div>
+    <div class="controls">
+      <div class="ctl"><label>Magnetic field B <b id="bVal"></b></label><input type="range" id="bIn" min="10" max="500" step="5" value="100"></div>
+      <div class="ctl"><label>Region size L <b id="lVal"></b></label><input type="range" id="lIn" min="5" max="100" step="1" value="30"></div>
+      <div class="ctl"><label>Density n <b id="nVal"></b></label><input type="range" id="nIn" min="8" max="11" step="0.1" value="9"></div>
+      <div class="ctl"><label>Temperature T <b id="tVal"></b></label><input type="range" id="tIn" min="5.7" max="7.3" step="0.05" value="6"></div>
+    </div>
+    <div class="readouts" id="engineOut"></div>
+  </div>
+
+  <div id="energyChart" class="chart"></div>
+  <p class="caption">Stored energy against field strength for four region sizes. The black dot is your calculator setting. Dotted lines mark the rough energy of C, M and X-class flares. Only 10–30% of the stored energy is "free" to be released.</p>
+
+  <h2>The flux rope: a loaded spring</h2>
+  <p>The twisted field often organises into a <b>flux rope</b>: a tube of helical field lines, often visible as a dark <b>filament</b> or <b>prominence</b>. It is held down by the arching field above it, the <b>strapping field</b>. As more twist is added, the rope pushes harder upward. Eventually the balance breaks and the rope starts to rise. What happens next is reconnection.</p>
+  <figure><img src="images/diagram_cshkp.png" alt="Standard flare model: flux rope above a vertical current sheet, X-point, flare loops and ribbons on the surface"></figure>
+  <p class="caption">The standard flare model (CSHKP, after Carmichael, Sturrock, Hirayama, Kopp and Pneuman). The rising flux rope stretches the field below it into a thin current sheet, where reconnection happens.</p>
+
+  <div class="box takeaway"><div class="label">Key takeaway</div><p>The Sun stores flare energy in <b>twisted magnetic fields</b> (E ∝ B²L³). The field dominates the plasma (β ≪ 1). When a flux rope loses balance and rises, it sets up the conditions for reconnection.</p></div>
+  <div class="pager"><a href="#problem"><small>Previous</small>← 01 · The problem</a><a href="#reconnection"><small>Next</small>03 · Magnetic reconnection →</a></div>
+</section>
+
+<!-- =============================================================== 03 RECONNECTION -->
+<section class="page" id="reconnection">
+  <div class="eyebrow">03 · The science, part 2</div>
+  <h1>Magnetic reconnection: the snap</h1>
+  <p class="lede">Reconnection is how magnetic energy becomes heat, fast particles and motion. It powers flares, CMEs, aurora and even fusion-reactor disruptions.</p>
+
+  <h2>What happens</h2>
+  <p>Under the rising flux rope, field lines pointing <b>up</b> on one side and <b>down</b> on the other are pushed together into a thin <b>current sheet</b>. There, and only there, the "frozen-in" rule breaks down. The field lines <b>break and re-join</b> in a new shape, crossing at an <b>X-point</b>. The newly joined lines are sharply bent, and magnetic tension straightens them like a slingshot, flinging plasma out at enormous speed.</p>
+
+  <div class="xpoint-wrap"><canvas id="xpoint" aria-label="Animation of field lines flowing into an X-point from the sides and out from the top and bottom"></canvas></div>
+  <div class="controls">
+    <div class="ctl"><label>Reconnection rate M <b id="mVal"></b></label><input type="range" id="mIn" min="-3" max="-1" step="0.05" value="-2"></div>
+  </div>
+  <p class="caption"><b style="color:var(--s1)">Blue lines</b> are the incoming field, pushed together from the left and right. At the centre they reconnect and leave as <b style="color:var(--s2)">orange lines</b>, shooting up (towards the CME) and down (towards the flare). The slider sets how fast field is processed.</p>
+
+  <h2>Three numbers that describe reconnection</h2>
+  <div class="formula">vA = B / √(μ₀ ρ)<span class="where"><b>Alfvén speed</b>, the speed of magnetic waves and the top speed of the outflow jets. With B = 100 G and n = 10⁹ cm⁻³ it is about <b>6,900 km/s</b>.</span></div>
+  <div class="formula">M = v_in / vA<span class="where"><b>Reconnection rate</b>: how fast field flows in, as a fraction of vA. Flares show M ≈ 0.01–0.1.</span></div>
+  <div class="formula">S = L · vA / η<span class="where"><b>Lundquist number</b>: how "perfect" the plasma is. η is the magnetic diffusivity (how easily field slips through plasma). In the corona S ≈ 10¹² – 10¹⁴, which is enormous.</span></div>
+
+  <h2>The 50-year puzzle: why so fast?</h2>
+  <p>The first theory (Sweet–Parker, 1957) predicted <b>M = S<sup>−½</sup></b>. With S ≈ 10¹⁴ that gives M ≈ 10⁻⁷, so a flare would take <b>years</b>. Real flares take <b>minutes</b>. Newer theories solve this: Petschek's shock-bounded outflow, and today's leading picture, in which the current sheet shatters into many small magnetic islands (<b>plasmoids</b>) and turbulence. That makes M ≈ 0.01 no matter how large S is.</p>
+  <div id="rateChart" class="chart"></div>
+  <p class="caption">Predicted reconnection rate against the Lundquist number. The green band is what flare observations show. The markers show your region from page 02 (change B, L, n or T there).</p>
+  <div class="table-wrap"><table id="rateTable"></table></div>
+
+  <h2>Where does the energy go?</h2>
+  <div class="formula">P ≈ (B² / μ₀) · v_in · L²<span class="where"><b>Power</b> released: the magnetic energy carried into the sheet each second. It goes into (1) heating, (2) accelerating particles to near light speed and (3) bulk motion: the outflow jets and the CME.</span></div>
+
+  <div class="box takeaway"><div class="label">Key takeaway</div><p>Reconnection breaks and re-joins field lines at an X-point, converting magnetic energy at a rate set by <b>M × vA</b>. "Fast" reconnection (M ≈ 0.01–0.1) releases a flare's energy in minutes. The rate M is the <b>hidden quantity</b> our simulator tries to estimate from the data.</p></div>
+  <div class="pager"><a href="#engine"><small>Previous</small>← 02 · The magnetic engine</a><a href="#flare"><small>Next</small>04 · The flare →</a></div>
+</section>
+
+<!-- =============================================================== 04 FLARE -->
+<section class="page" id="flare">
+  <div class="eyebrow">04 · The science, part 3</div>
+  <h1>The flare: energy going down</h1>
+  <p class="lede">Half the story of reconnection goes downward. It lights up the Sun's surface and sends an X-ray flash to Earth in 8 minutes.</p>
+
+  <h2>What happens, in four steps</h2>
+  <div class="strip">
+    <div><div class="num">1</div><b>Energy falls</b><span>Fast electrons and heat race down the new loops</span></div>
+    <div><div class="num">2</div><b>Ribbons light up</b><span>Electrons hit the dense surface → hard X-rays, two bright ribbons</span></div>
+    <div><div class="num">3</div><b>Loops fill</b><span>Heated gas rises into the loops at 10–20 M °C → <b>soft X-rays (GOES)</b></span></div>
+    <div><div class="num">4</div><b>Ribbons spread</b><span>Reconnection climbs, so the ribbons move apart. Their speed = the reconnection rate</span></div>
+  </div>
+
+  <h2>Flare classes: the Richter scale of the Sun</h2>
+  <p>Each letter is <b>10×</b> stronger than the one before. The number is a multiplier: 3.1 × 10⁻⁶ W/m² = C × 3.1 = <b>C3.1</b>.</p>
+  <div class="ladder" id="ladder">
+    <div class="rung" style="--w:20%"><b>A</b><span>10⁻⁸ W/m² · background</span></div>
+    <div class="rung" style="--w:40%"><b>B</b><span>10⁻⁷ · background</span></div>
+    <div class="rung" style="--w:60%"><b>C</b><span>10⁻⁶ · small, common</span></div>
+    <div class="rung" style="--w:80%"><b>M</b><span>10⁻⁵ · minor radio blackouts (R1–R2)</span></div>
+    <div class="rung" style="--w:100%"><b>X</b><span>10⁻⁴+ · strong blackouts (R3+)</span></div>
+  </div>
+  <p class="caption" id="ladderCaption"></p>
+
+  <h2>Live: the Sun's X-ray output</h2>
+  <div id="goesChart" class="chart" style="min-height:520px"></div>
+  <p class="caption" id="goesCaption"></p>
+
+  <h2>The Neupert effect: seeing the hidden engine</h2>
+  <p>In 1968 Werner Neupert noticed that the soft X-ray curve looks like the <b>running total</b> of the hard X-ray bursts. That makes sense: soft X-rays come from plasma that accumulates the injected energy, while hard X-rays trace the energy release <i>right now</i>. So:</p>
+  <div class="formula">energy release rate (reconnection) ∝ d(soft X-ray flux) / dt<span class="where">The <b>slope</b> of the GOES curve is a live proxy for the reconnection rate. That is the lower panel above: every spike is a burst of reconnection.</span></div>
+
+  <h2>Simulate one eruptive event</h2>
+  <p>Our model connects the pieces. A reconnection pulse releases energy, the X-ray loops fill and then cool (time constant τ), and the CME is pushed upward while reconnection runs.</p>
+  <div class="formula">dF/dt = k · P(t) − F / τ_cool<span class="where">F = soft X-ray flux, P(t) = energy release rate from reconnection, τ_cool = how fast loops cool (5–30 min).</span></div>
+  <div class="box try"><div class="label">Try it</div>
+    <div class="controls">
+      <div class="ctl"><label>Peak reconnection rate M <b id="evMVal"></b></label><input type="range" id="evM" min="0.01" max="0.1" step="0.005" value="0.06"></div>
+      <div class="ctl"><label>Reconnection burst length <b id="evWVal"></b></label><input type="range" id="evW" min="2" max="20" step="0.5" value="6"></div>
+      <div class="ctl"><label>Loop cooling time τ <b id="evTVal"></b></label><input type="range" id="evT" min="3" max="30" step="1" value="12"></div>
+    </div>
+    <div class="readouts" id="evOut"></div>
+  </div>
+  <div id="eventChart" class="chart" style="min-height:640px"></div>
+  <p class="caption">Model, not data. ① The reconnection pulse drives ② the X-ray rise. ③ CME acceleration peaks at the same moment as the X-ray <i>rise</i>, not the X-ray peak, as observed by Zhang et al. (2001). ④ The CME then coasts. The dashed line marks the steepest X-ray rise.</p>
+
+  <div class="box takeaway"><div class="label">Key takeaway</div><p>The flare is the downward half of reconnection. GOES shows it live. The <b>slope</b> of the GOES curve (Neupert effect) reveals when and how hard reconnection is working. This is how we "see" the invisible engine.</p></div>
+  <div class="pager"><a href="#reconnection"><small>Previous</small>← 03 · Reconnection</a><a href="#cme"><small>Next</small>05 · The CME's journey →</a></div>
+</section>
+
+<!-- =============================================================== 05 CME -->
+<section class="page" id="cme">
+  <div class="eyebrow">05 · The science, part 4</div>
+  <h1>The CME: energy going up, and its 150-million-km trip</h1>
+  <p class="lede">The other half of reconnection goes upward. It cuts the flux rope loose and throws a billion tonnes of magnetised plasma into space.</p>
+
+  <h2>Launch</h2>
+  <p>Reconnection under the flux rope does two things at once: it <b>cuts the tethers</b> holding the rope down, and it <b>wraps new flux</b> around the rope, pushing it up. So the CME accelerates hardest exactly while the flare is brightening fastest. After roughly 10–60 minutes reconnection fades, and the CME coasts outward at <b>300–3,000 km/s</b>.</p>
+  <p>NASA's space weather office measures each CME's speed, direction and width from coronagraph images and publishes them in the <b>DONKI</b> catalogue.</p>
+  <div id="cmeHist" class="chart"></div>
+  <p class="caption" id="cmeHistCaption"></p>
+
+  <h2>The journey: a tug-of-war with the solar wind</h2>
+  <p>Space isn't empty. The Sun constantly blows a <b>solar wind</b> at 300–800 km/s. Beyond about 20 solar radii the CME's own push is gone, and the only force left is <b>drag</b> from that wind, like a car coasting into air resistance:</p>
+  <div class="formula">acceleration = −γ · (v − w) · |v − w|<span class="where">v = CME speed, w = solar wind speed (<span class="badge live">Live</span> from L1), γ = drag parameter (0.1–2 × 10⁻⁷ km⁻¹). A fast CME is <b>slowed</b> towards w and a slow CME is <b>dragged along</b> up to w. This is the <b>Drag-Based Model (DBM)</b>, used operationally in forecasting.</span></div>
+  <div class="box plain"><div class="label">In plain words</div><p>The faster the CME moves relative to the wind, the harder the wind pushes back (drag grows with the <i>square</i> of the speed difference). So fast CMEs lose speed quickly at first, then settle close to the wind speed.</p></div>
+
+  <div class="box try"><div class="label">Try it · when would it arrive?</div>
+    <div class="controls">
+      <div class="ctl"><label>Pick a real CME (last 30 days)</label><select id="cmePick"></select></div>
+      <div class="ctl"><label>CME launch speed v₀ <b id="v0Val"></b></label><input type="range" id="v0In" min="200" max="3000" step="10" value="1000"></div>
+      <div class="ctl"><label>Solar wind speed w <b id="wVal"></b></label><input type="range" id="wIn" min="250" max="800" step="1" value="400"></div>
+      <div class="ctl"><label>Drag γ (× 10⁻⁷ km⁻¹) <b id="gVal"></b></label><input type="range" id="gIn" min="0.05" max="2" step="0.05" value="0.2"></div>
+    </div>
+    <div class="readouts" id="dbmOut"></div>
+  </div>
+  <div id="dbmChart" class="chart" style="min-height:520px"></div>
+  <p class="caption">Top: speed. Bottom: distance from the Sun; the dot marks arrival at Earth (1 AU). The dashed "no-drag" line shows how wrong you'd be if you ignored the solar wind.</p>
+
+  <div class="box takeaway"><div class="label">Key takeaway</div><p>The CME is the upward half of reconnection. Its launch speed comes from the <span class="badge cat">Catalogue</span>. Its journey is shaped by drag from the <span class="badge live">Live</span> solar wind. The drag-based model turns those two numbers into an arrival time, typically 1–4 days.</p></div>
+  <div class="pager"><a href="#flare"><small>Previous</small>← 04 · The flare</a><a href="#earth"><small>Next</small>06 · Arrival at Earth →</a></div>
+</section>
+
+<!-- =============================================================== 06 EARTH -->
+<section class="page" id="earth">
+  <div class="eyebrow">06 · The science, part 5</div>
+  <h1>Arrival at Earth: reconnection, again</h1>
+  <p class="lede">Earth has its own magnetic shield. Whether a CME causes a storm depends almost entirely on one thing: which way its magnetic field points.</p>
+
+  <h2>The early-warning post at L1</h2>
+  <svg class="l1" viewBox="0 0 800 150" role="img" aria-label="Sun on the left, Earth on the right 150 million km away, and the L1 point 1.5 million km sunward of Earth">
+    <circle cx="60" cy="75" r="46" fill="var(--s4)" opacity="0.9"/>
+    <text x="60" y="80" text-anchor="middle" font-size="14" font-weight="700" fill="#111">Sun</text>
+    <line x1="110" y1="75" x2="650" y2="75" stroke="var(--muted)" stroke-dasharray="5 5"/>
+    <text x="380" y="62" text-anchor="middle" font-size="13" fill="var(--ink-2)">150 million km (1 AU) · CME takes 1–4 days</text>
+    <path d="M 520 75 l 12 -6 v 12 z" fill="var(--muted)"/>
+    <circle cx="660" cy="75" r="9" fill="var(--s2)"/>
+    <text x="660" y="112" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">L1 spacecraft</text>
+    <text x="660" y="130" text-anchor="middle" font-size="12" fill="var(--ink-2)">measures v, n, Bx, By, Bz</text>
+    <line x1="670" y1="75" x2="728" y2="75" stroke="var(--s2)" stroke-width="2"/>
+    <text x="700" y="62" text-anchor="middle" font-size="12" fill="var(--s2)">1.5 M km</text>
+    <text x="700" y="30" text-anchor="middle" font-size="12" font-weight="600" fill="var(--s2)">30–60 min warning</text>
+    <circle cx="745" cy="75" r="16" fill="var(--s1)"/>
+    <text x="745" y="112" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">Earth</text>
+  </svg>
+  <p class="caption">Not to scale. Spacecraft at L1 (DSCOVR, ACE, SWFO-L1) sample the solar wind before it hits Earth. NOAA publishes this every minute as <b>RTSW</b>.</p>
+
+  <h2>Why "Bz" is the most watched number in space weather</h2>
+  <p>On its day side, Earth's magnetic field points <b>north</b>. If the incoming field (the <b>IMF</b>, interplanetary magnetic field) points <b>south</b> (Bz &lt; 0), the two are antiparallel, exactly like the two sides of the current sheet on the Sun. They <b>reconnect</b>, opening the shield and letting solar wind energy pour in. Northward IMF barely couples at all.</p>
+  <div class="box analogy"><div class="label">Analogy</div><p>Think of Earth's field as a door that only unlocks when the key is turned south. The CME's speed decides how hard it pushes, but Bz decides whether the door opens.</p></div>
+
+  <h2>Measuring Earth's reconnection rate: Newell coupling</h2>
+  <div class="formula">dΦ/dt = v^(4/3) · B_T^(2/3) · sin^(8/3)(θ/2)<span class="where">v = solar wind speed, B_T = √(By² + Bz²) = the part of the field that can reconnect, θ = clock angle (0° = pure north, 180° = pure south). Newell et al. (2007) found this combination tracks 10 different measures of Earth's magnetic activity best.</span></div>
+
+  <div class="box try"><div class="label">Try it · will these conditions cause a storm?</div>
+    <div class="dial-wrap">
+      <svg id="dial" viewBox="-110 -110 220 220" role="img" aria-label="Clock-angle dial showing the direction of the IMF"></svg>
+      <div>
+        <div class="controls">
+          <div class="ctl"><label>Bz (north +, south −) <b id="bzVal"></b></label><input type="range" id="bzIn" min="-30" max="30" step="0.1" value="-5"></div>
+          <div class="ctl"><label>By (dawn–dusk) <b id="byVal"></b></label><input type="range" id="byIn" min="-30" max="30" step="0.1" value="3"></div>
+          <div class="ctl"><label>Wind speed v <b id="vVal"></b></label><input type="range" id="vIn" min="250" max="1200" step="5" value="450"></div>
+          <div class="ctl"><label>Density n <b id="dnVal"></b></label><input type="range" id="dnIn" min="0.5" max="40" step="0.5" value="5"></div>
+        </div>
+        <button class="chip" id="earthLive" type="button">↺ Load live values</button>
+      </div>
+    </div>
+    <div class="readouts" id="earthOut"></div>
+    <div class="verdict" id="earthVerdict"></div>
+  </div>
+
+  <div id="clockChart" class="chart" style="min-height:280px"></div>
+  <p class="caption">How much of the field can reconnect, by clock angle. Coupling is almost zero for northward IMF and maximal for southward. The dot shows your slider setting.</p>
+
+  <h2>Live: is Earth being driven right now?</h2>
+  <div id="newellChart" class="chart" style="min-height:600px"></div>
+  <p class="caption" id="newellCaption"></p>
+
+  <h2>From coupling to a storm</h2>
+  <p>Energy pumped in by reconnection builds a <b>ring current</b> of particles around Earth that weakens the ground-level magnetic field. The <b>Dst index</b> measures this: the more negative, the bigger the storm. A simple model (Burton et al., 1975):</p>
+  <div class="formula">dDst/dt = Q − Dst / τ,   Q = −4.4 (E_y − 0.5) nT/h   when E_y = v·Bs &gt; 0.5 mV/m<span class="where">E_y = the solar wind electric field (speed × southward field). τ ≈ 7.7 h is how fast the ring current decays. Storm levels: Dst &lt; −50 nT moderate, &lt; −100 intense, &lt; −250 extreme.</span></div>
+
+  <div class="box takeaway"><div class="label">Key takeaway</div><p>At Earth the same physics repeats: <b>southward Bz → reconnection → energy in → storm</b>. The Newell coupling is Earth's live reconnection rate, and every input to it is measured in real time.</p></div>
+  <div class="pager"><a href="#cme"><small>Previous</small>← 05 · The CME's journey</a><a href="#flow"><small>Next</small>07 · How the application works →</a></div>
+</section>
+
+<!-- =============================================================== 07 FLOW -->
+<section class="page" id="flow">
+  <div class="eyebrow">07 · The application</div>
+  <h1>How the application works, stage by stage</h1>
+  <p class="lede">This page follows the application from raw satellite numbers to a complete, explained event. At each stage: what question it answers, what goes in, what it does (in plain words) and what comes out. It describes the problem each stage solves, not the code.</p>
+
+  <figure><img src="images/diagram_sun_earth_chain.png" alt="Sun to Earth chain with data sources"></figure>
+
+  <div class="steps">
+    <div class="step"><h3>Collect the evidence</h3>
+      <p class="q">"What is the Sun doing, and what has already left it?"</p>
+      <div class="io">
+        <div><div class="h">In</div>Three independent feeds: GOES X-rays <span class="badge live">Live</span> (1-min), L1 solar wind and magnetic field <span class="badge live">Live</span> (1-min), DONKI CME list <span class="badge cat">Catalogue</span> (hours)</div>
+        <div><div class="h">Out</div>Raw time series and event lists, each tagged with source and fetch time</div>
+        <div class="wide"><div class="h">What we solve</div>No single place has all the evidence. We gather it every minute. If a feed is down, we fall back to the last saved snapshot and <b>say so</b>, so the user always knows how fresh the data is.</div>
+      </div></div>
+
+    <div class="step"><h3>Clean and align</h3>
+      <p class="q">"Can these numbers be trusted and compared on one clock?"</p>
+      <div class="io">
+        <div><div class="h">In</div>Raw feeds with gaps, duplicates, instrument switches and eclipse dropouts</div>
+        <div><div class="h">Out</div>One common UTC timeline; bad points removed and gaps marked, not hidden</div>
+        <div class="wide"><div class="h">What we solve</div>Satellites drop out (GOES has daily eclipses around the equinoxes), L1 switches between spacecraft, and feeds list newest-first or oldest-first. Without cleaning, a data gap looks like a sudden drop in solar activity. We keep only the active spacecraft, remove dropouts relative to the local baseline, and break lines at gaps.</div>
+      </div></div>
+
+    <div class="step"><h3>Detect flare events</h3>
+      <p class="q">"When did the Sun flare, and how big was it?"</p>
+      <div class="io">
+        <div><div class="h">In</div>Clean GOES soft X-ray curve</div>
+        <div><div class="h">Out</div>A list of flares: start, peak, end, class (e.g. C3.1)</div>
+        <div class="wide"><div class="h">What we solve</div>We turn a wiggly curve into discrete events a person can talk about. The flux is converted to the familiar A/B/C/M/X class, and each flare becomes an anchor for the rest of the chain. <a href="#flare">Science: page 04</a></div>
+      </div></div>
+
+    <div class="step"><h3>Reveal the hidden reconnection</h3>
+      <p class="q">"How hard was reconnection working, moment by moment?"</p>
+      <div class="io">
+        <div><div class="h">In</div>The flare's X-ray curve; model settings (coronal B, n, L) <span class="badge model">Model</span></div>
+        <div><div class="h">Out</div>A reconnection-rate curve M(t), energy release P(t) and total energy</div>
+        <div class="wide"><div class="h">What we solve</div>Reconnection can't be observed directly. Using the <b>Neupert effect</b> (energy release ∝ slope of the X-ray curve) and the loop-cooling model, we <b>work backwards</b> from what GOES saw to the engine that produced it. This is the core scientific step of the project. <a href="#reconnection">Science: page 03</a></div>
+      </div></div>
+
+    <div class="step"><h3>Link the flare to its CME</h3>
+      <p class="q">"Did this flare launch a CME, and how fast?"</p>
+      <div class="io">
+        <div><div class="h">In</div>Flare times; DONKI CMEs with speed, direction and width</div>
+        <div><div class="h">Out</div>Flare–CME pairs, with the CME's modelled acceleration profile</div>
+        <div class="wide"><div class="h">What we solve</div>Flares and CMEs are catalogued separately. We match them in time (the CME appears in coronagraphs shortly after the flare's rise) and check that the CME acceleration lines up with the reconnection curve. Many flares have <b>no</b> CME ("confined" flares), and knowing which is which is itself a research question. <a href="#cme">Science: page 05</a></div>
+      </div></div>
+
+    <div class="step"><h3>Send the CME across space</h3>
+      <p class="q">"Is it heading our way, and when will it arrive?"</p>
+      <div class="io">
+        <div><div class="h">In</div>CME speed and direction <span class="badge cat">Catalogue</span>; current solar wind speed <span class="badge live">Live</span>; drag γ <span class="badge model">Model</span></div>
+        <div><div class="h">Out</div>Earth-directed yes/no, arrival time, impact speed, and the speed and distance curves</div>
+        <div class="wide"><div class="h">What we solve</div>A CME's launch speed alone is misleading, because drag changes it by hundreds of km/s. The drag-based model uses <b>today's measured wind</b> to predict when it will arrive and how hard it will hit, and a γ range gives an uncertainty window rather than a single false-precision time.</div>
+      </div></div>
+
+    <div class="step"><h3>Evaluate the coupling at Earth</h3>
+      <p class="q">"Is Earth's magnetic shield open right now, and how wide?"</p>
+      <div class="io">
+        <div><div class="h">In</div>L1 speed, density, By, Bz <span class="badge live">Live</span></div>
+        <div><div class="h">Out</div>Clock angle, Newell coupling, electric field, magnetopause distance, estimated storm level</div>
+        <div class="wide"><div class="h">What we solve</div>Raw Bz values mean nothing to a beginner. We convert them into <b>Earth's reconnection rate</b> and a plain-language verdict (quiet / active / storm). When a predicted CME arrives, this stage confirms or refutes the forecast. <a href="#earth">Science: page 06</a></div>
+      </div></div>
+
+    <div class="step"><h3>Explain it as one story</h3>
+      <p class="q">"What happened, in words anyone can follow?"</p>
+      <div class="io">
+        <div><div class="h">In</div>Everything above, time-aligned</div>
+        <div><div class="h">Out</div>Four linked panels (reconnection, flare, CME, Earth) on one time axis, plus a written summary</div>
+        <div class="wide"><div class="h">What we solve</div>This is the gap in today's tools: they show numbers, not causes. Selecting a flare highlights its reconnection burst, its CME, the predicted arrival and the measured response at Earth. Each value carries its Live / Catalogue / Model label, so the story is <b>honest about what is measured and what is inferred</b>.</div>
+      </div></div>
+
+    <div class="step"><h3>Export the event record</h3>
+      <p class="q">"Can someone else learn from this event?"</p>
+      <div class="io">
+        <div><div class="h">In</div>The linked event</div>
+        <div><div class="h">Out</div>One JSON/CSV row per event: flare features, reconnection estimates, CME, predicted and observed arrival, Earth response</div>
+        <div class="wide"><div class="h">What we solve</div>Every event the app processes becomes a labelled training example. Over months this builds the dataset that the <a href="#future">ML and agent projects</a> need, which today must be stitched together by hand from 5+ sources.</div>
+      </div></div>
+  </div>
+
+  <h2>Follow today's Sun through the flow</h2>
+  <p>The same nine stages, run on the data loaded into this page:</p>
+  <div class="box plain" id="storyBox"><div class="label">Today's walkthrough</div><p>Loading…</p></div>
+
+  <h2>Where uncertainty enters</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Stage</th><th>Main uncertainty</th><th>How we handle it</th></tr>
+    <tr><td>Reveal reconnection</td><td>Coronal B, n and L are not measured live</td><td>Sliders with realistic ranges; show a band, not a line</td></tr>
+    <tr><td>Link flare → CME</td><td>Timing overlaps, many confined flares</td><td>Show the match confidence; allow "no CME"</td></tr>
+    <tr><td>Send CME across space</td><td>Drag γ varies 10× between events</td><td>Run the γ range → arrival window</td></tr>
+    <tr><td>Coupling at Earth</td><td>The CME's own Bz is unknown until it reaches L1</td><td>Present scenarios (north vs south) until it arrives</td></tr>
+  </table></div>
+  <div class="pager"><a href="#earth"><small>Previous</small>← 06 · Arrival at Earth</a><a href="#variables"><small>Next</small>08 · Variables &amp; formulas →</a></div>
+</section>
+
+<!-- =============================================================== 08 VARIABLES -->
+<section class="page" id="variables">
+  <div class="eyebrow">08 · Reference</div>
+  <h1>Every variable and formula</h1>
+  <p class="lede">Each symbol used in the project: what it means in plain words, its formula, unit, typical values, where the number comes from, and a worked example. The examples use the reference case below and were checked numerically.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Reference case</th><th>Value</th></tr>
+    <tr><td>Coronal field B · density n · temperature T · size L</td><td>100 G · 10⁹ cm⁻³ · 10⁶ K · 30 Mm</td></tr>
+    <tr><td>Solar wind (live, 28 Sep 2026)</td><td>v = 344 km/s · n = 2.0 cm⁻³ · By = 2.8 nT · Bz = −1.11 nT</td></tr>
+    <tr><td>Unit conversions</td><td>1 G = 10⁻⁴ T · 1 nT = 10⁻⁹ T · 1 J = 10⁷ erg · 1 Wb = 10⁸ Mx · 1 Mm = 1,000 km · 1 AU = 1.496 × 10⁸ km · R☉ = 695,700 km</td></tr>
+  </table></div>
+  <div class="chips" id="varChips"></div>
+  <input type="search" id="varSearch" placeholder="Search a symbol or word, e.g. Alfvén, Bz, drag…" aria-label="Search variables">
+  <div class="cards" id="varCards" style="margin-top:14px"></div>
+  <div class="pager"><a href="#flow"><small>Previous</small>← 07 · How it works</a><a href="#data"><small>Next</small>09 · Data sources →</a></div>
+</section>
+
+<!-- =============================================================== 09 DATA -->
+<section class="page" id="data">
+  <div class="eyebrow">09 · Data</div>
+  <h1>Where the numbers come from</h1>
+  <p class="lede">All sources are free and public. Three of them are real-time and used by the application now. The rest are archives for validation and ML (<a href="#future">page 11</a>).</p>
+
+  <h2>Real-time feeds (used by the app)</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Feed</th><th>Endpoint</th><th>Key fields</th><th>Cadence</th><th>Label</th></tr>
+    <tr><td>GOES X-ray flux</td><td><code>services.swpc.noaa.gov/json/goes/primary/xrays-3-day.json</code> (also 6-hour, 1-day, 7-day)</td><td><code>time_tag</code>, <code>flux</code>, <code>energy</code> ("0.1-0.8nm" = flare band)</td><td>1 min</td><td><span class="badge live">Live</span></td></tr>
+    <tr><td>GOES flare list</td><td><code>…/json/goes/primary/xray-flares-7-day.json</code>, <code>xray-flares-latest.json</code></td><td><code>begin_time</code>, <code>max_time</code>, <code>end_time</code>, <code>max_class</code></td><td>per event</td><td><span class="badge live">Live</span></td></tr>
+    <tr><td>L1 magnetic field</td><td><code>services.swpc.noaa.gov/json/rtsw/rtsw_mag_1m.json</code></td><td><code>bt</code>, <code>bx_gsm</code>, <code>by_gsm</code>, <code>bz_gsm</code>, <code>active</code></td><td>1 min</td><td><span class="badge live">Live</span></td></tr>
+    <tr><td>L1 solar wind plasma</td><td><code>services.swpc.noaa.gov/json/rtsw/rtsw_wind_1m.json</code></td><td><code>proton_speed</code>, <code>proton_density</code>, <code>proton_temperature</code>, <code>active</code></td><td>1 min</td><td><span class="badge live">Live</span></td></tr>
+    <tr><td>DONKI CME analysis</td><td><code>api.nasa.gov/DONKI/CMEAnalysis</code></td><td><code>time21_5</code>, <code>speed</code>, <code>latitude</code>, <code>longitude</code>, <code>halfAngle</code></td><td>hours after launch</td><td><span class="badge cat">Catalogue</span></td></tr>
+    <tr><td>DONKI flares / shocks / storms</td><td><code>api.nasa.gov/DONKI/FLR</code>, <code>/IPS</code>, <code>/GST</code></td><td>Linked events (flare ↔ CME ↔ shock ↔ storm)</td><td>hours</td><td><span class="badge cat">Catalogue</span></td></tr>
+  </table></div>
+
+  <h2>Things a beginner should know about these feeds</h2>
+  <ul>
+    <li><b>The old solar-wind URLs are gone.</b> <code>/products/solar-wind/plasma-1-day.json</code> and <code>mag-1-day.json</code> now return <b>404</b> (checked 28 Sep 2026). Use the <code>/json/rtsw/</code> feeds above. The archived dashboard in <code>legacy/dashboard/js/config.js</code> still points at the old ones.</li>
+    <li><b>RTSW lists several spacecraft.</b> Keep only rows with <code>active: true</code>. Rows are <b>newest first</b>, and times have no "Z" but are UTC.</li>
+    <li><b>GOES eclipse season.</b> Around the March and September equinoxes GOES passes through Earth's shadow daily, giving short, sharp dropouts. They are not solar events.</li>
+    <li><b>DONKI rate limit.</b> The <code>DEMO_KEY</code> allows only about 10 requests per hour. Get a free key at <a href="https://api.nasa.gov" target="_blank" rel="noopener">api.nasa.gov</a>.</li>
+    <li><b>CORS is fine.</b> All feeds send <code>Access-Control-Allow-Origin: *</code>, so a browser can fetch them directly with no proxy.</li>
+    <li><b>Coordinates.</b> Use GSM components (<code>*_gsm</code>) for Earth coupling. In GSM, z follows Earth's magnetic axis, so "Bz &lt; 0" really means "antiparallel to Earth's field".</li>
+  </ul>
+
+  <h2>Archives for validation and ML</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Dataset</th><th>What's in it</th><th>Use</th></tr>
+    <tr><td>NOAA NCEI GOES XRS archive</td><td>X-ray flux since 1975, science-quality</td><td>Flare training data</td></tr>
+    <tr><td>SWPC event reports / GOES flare lists</td><td>Every flare with times and class</td><td>Labels</td></tr>
+    <tr><td>SDO/HMI SHARP (JSOC)</td><td>~20 magnetic parameters per active region, every 12 min since 2010</td><td>Flare-forecast features</td></tr>
+    <tr><td>RibbonDB (Kazachenko et al. 2017)</td><td>Reconnection flux from ribbons for 3,000+ flares</td><td>Ground truth for the reconnection estimate</td></tr>
+    <tr><td>OMNIWeb (NASA)</td><td>Solar wind at Earth's nose, 1-min and hourly, since 1963</td><td>Coupling and storm models</td></tr>
+    <tr><td>Kyoto WDC Dst · GFZ Kp</td><td>Storm indices</td><td>Storm labels</td></tr>
+    <tr><td>Richardson &amp; Cane ICME list · CCMC CME Scoreboard</td><td>Observed CME arrivals, and forecasts from many models</td><td>Arrival-time validation</td></tr>
+  </table></div>
+  <div class="pager"><a href="#variables"><small>Previous</small>← 08 · Variables</a><a href="#roadmap"><small>Next</small>10 · Development roadmap →</a></div>
+</section>
+
+<!-- =============================================================== 10 ROADMAP -->
+<section class="page" id="roadmap">
+  <div class="eyebrow">10 · Building it</div>
+  <h1>Development roadmap</h1>
+  <p class="lede">Built in small phases, each one useful on its own. Every phase ends with something a beginner can see and a check that the physics is right.</p>
+
+  <figure><img src="images/arch_simulation.svg" alt="Architecture: live feeds are fetched and normalised, then fed with model sliders into the physics engine, which builds an event timeline rendered as four linked panels; a snapshot cache is the fallback"></figure>
+  <p class="caption">The physics engine (orange) is the heart. Live feeds and user sliders go in, and a single event timeline comes out, feeding the four panels.</p>
+
+  <div class="steps">
+    <div class="step"><h3>Phase 0 · Reliable data foundation</h3><p>Fetch the three live feeds, clean and align them, and fall back to a saved snapshot. Every value gets a Live / Catalogue / Model label.</p><p><b>Done when:</b> the page shows data freshness and survives a feed outage.</p></div>
+    <div class="step"><h3>Phase 1 · Explain reconnection</h3><p>X-point animation, energy calculator and reconnection-rate models (pages 02–03).</p><p><b>Done when:</b> the calculator reproduces the worked examples on page 08.</p></div>
+    <div class="step"><h3>Phase 2 · Live flare and hidden engine</h3><p>GOES curve, flare detection and classification, Neupert proxy, event model.</p><p><b>Done when:</b> detected flares match the NOAA flare list (start/peak within 2 min, same class).</p></div>
+    <div class="step"><h3>Phase 3 · CME journey</h3><p>DONKI ingestion, flare–CME matching, drag-based arrival with a γ-range window.</p><p><b>Done when:</b> for past Earth-hitting CMEs, the arrival error is comparable to the published DBM performance (roughly ±10–15 h).</p></div>
+    <div class="step"><h3>Phase 4 · Earth coupling</h3><p>Clock angle, Newell coupling, magnetopause distance, Burton Dst estimate.</p><p><b>Done when:</b> modelled Dst tracks the Kyoto Dst for 5 historical storms.</p></div>
+    <div class="step"><h3>Phase 5 · One linked story</h3><p>Four synchronised panels, event selection, written summary, JSON/CSV export.</p><p><b>Done when:</b> a new user can explain one event end-to-end in 5 minutes.</p></div>
+    <div class="step"><h3>Phase 6 · Intelligence layer</h3><p>First ML model and LLM explainer (<a href="#future">page 11</a>) built on the exported dataset.</p><p><b>Done when:</b> a model beats its physics baseline on held-out events.</p></div>
+  </div>
+
+  <h2>How we validate the physics</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Model</th><th>Compare against</th><th>Metric</th></tr>
+    <tr><td>Reconnection estimate (Neupert + cooling)</td><td>RibbonDB reconnection flux; hard X-ray data (Solar Orbiter STIX)</td><td>Correlation of peak times and totals</td></tr>
+    <tr><td>Flare detection</td><td>NOAA GOES flare list</td><td>Precision / recall; timing error</td></tr>
+    <tr><td>Drag-based arrival</td><td>ICME arrival lists; CCMC CME Scoreboard</td><td>Mean absolute error (hours)</td></tr>
+    <tr><td>Coupling → Dst</td><td>Kyoto Dst</td><td>RMSE; storm peak timing</td></tr>
+  </table></div>
+  <div class="pager"><a href="#data"><small>Previous</small>← 09 · Data sources</a><a href="#future"><small>Next</small>11 · Future: ML, LLM &amp; agents →</a></div>
+</section>
+
+<!-- =============================================================== 11 FUTURE -->
+<section class="page" id="future">
+  <div class="eyebrow">11 · Beyond the simulator</div>
+  <h1>What you can build on top: 15 problem statements</h1>
+  <p class="lede">The simulator produces a clean, physics-labelled event timeline. That is exactly what's missing for machine learning, language models and autonomous agents that study the Sun. Each card below is a ready-to-start project.</p>
+  <div class="chips" id="futChips"></div>
+  <div class="cards" id="futCards"></div>
+
+  <h2>What an agentic system could look like</h2>
+  <figure><img src="images/arch_agentic.svg" alt="Orchestrator agent delegating to monitor, modelling, research and reporter agents, which use live data tools, physics and ML models, memory, and produce a human-reviewed bulletin"></figure>
+  <p class="caption">An orchestrator receives a question ("Is anything heading for Earth?") or a trigger (a flare onset). It delegates to specialist agents. Each agent uses <b>one</b> tool, and the final bulletin is reviewed by a human before release. The simulator from this project is the "Physics + ML models" tool.</p>
+  <div class="box takeaway"><div class="label">Where to start</div><p>Beginners: <b>#2 flare peak nowcast</b> or <b>#8 live anomaly detection</b> (small data, quick feedback). Intermediate: <b>#5 hybrid arrival-time model</b>. Advanced: <b>#3 hidden reconnection inversion</b> or <b>#13 autonomous solar monitor</b>.</p></div>
+  <div class="pager"><a href="#roadmap"><small>Previous</small>← 10 · Roadmap</a><a href="#glossary"><small>Next</small>12 · Glossary &amp; references →</a></div>
+</section>
+
+<!-- =============================================================== 12 GLOSSARY -->
+<section class="page" id="glossary">
+  <div class="eyebrow">12 · Reference</div>
+  <h1>Glossary &amp; references</h1>
+  <dl class="gloss">
+    <dt>Active region</dt><dd>An area of strong, complex magnetic field around sunspots, where flares happen.</dd>
+    <dt>Alfvén speed (vA)</dt><dd>The speed of magnetic waves in plasma, B/√(μ₀ρ). The speed limit for reconnection outflows.</dd>
+    <dt>AU (astronomical unit)</dt><dd>The mean Sun–Earth distance, 149.6 million km.</dd>
+    <dt>Bz</dt><dd>The north–south component of the interplanetary magnetic field. Negative (southward) values let it reconnect with Earth's field.</dd>
+    <dt>Clock angle (θ)</dt><dd>The direction of the IMF in the plane facing the Sun: 0° north, 180° south.</dd>
+    <dt>CME (coronal mass ejection)</dt><dd>A huge cloud of magnetised plasma (about a billion tonnes) ejected from the Sun.</dd>
+    <dt>Corona</dt><dd>The Sun's outer atmosphere, at 1–2 million °C, visible during eclipses.</dd>
+    <dt>CSHKP model</dt><dd>The "standard" model of eruptive flares: a rising flux rope, a current sheet below it, and reconnection producing both flare and CME.</dd>
+    <dt>Current sheet</dt><dd>A thin layer where the magnetic field reverses direction and electric current flows. This is where reconnection happens.</dd>
+    <dt>DONKI</dt><dd>NASA's Space Weather Database Of Notifications, Knowledge, Information: a catalogue of flares, CMEs, shocks and storms.</dd>
+    <dt>Drag-based model (DBM)</dt><dd>A model of CME travel where the only force is drag from the solar wind.</dd>
+    <dt>Dst index</dt><dd>A storm-strength index (nT) from ground magnetometers. More negative means a stronger storm.</dd>
+    <dt>Flare ribbons</dt><dd>Two bright strips on the solar surface marking the footpoints of newly reconnected loops. They move apart as a flare progresses.</dd>
+    <dt>Flux rope</dt><dd>A twisted bundle of magnetic field lines. It becomes the core of a CME.</dd>
+    <dt>Frozen-in flux</dt><dd>In a highly conducting plasma, field lines and plasma move together. Reconnection is where this breaks down.</dd>
+    <dt>GOES</dt><dd>NOAA's geostationary satellites, whose X-ray sensors define flare classes.</dd>
+    <dt>GSM coordinates</dt><dd>Geocentric Solar Magnetospheric: x points to the Sun, z along Earth's magnetic axis. The natural frame for Earth coupling.</dd>
+    <dt>IMF</dt><dd>Interplanetary magnetic field: the Sun's field carried outward by the solar wind.</dd>
+    <dt>L1</dt><dd>A balance point 1.5 million km sunward of Earth, where monitoring spacecraft sit and give 30–60 min of warning.</dd>
+    <dt>Lundquist number (S)</dt><dd>L·vA/η: how ideal a plasma is. It is enormous in the corona (about 10¹⁴).</dd>
+    <dt>Magnetopause</dt><dd>The boundary of Earth's magnetic shield, about 10 Earth radii sunward.</dd>
+    <dt>Magnetic reconnection</dt><dd>The breaking and re-joining of oppositely directed field lines, which converts magnetic energy into heat, particles and flows.</dd>
+    <dt>Neupert effect</dt><dd>Soft X-ray flux ≈ the running total of hard X-ray flux, so the slope of the soft X-ray curve traces energy release.</dd>
+    <dt>Newell coupling</dt><dd>v^(4/3)·B_T^(2/3)·sin^(8/3)(θ/2): the best simple estimate of Earth's dayside reconnection rate.</dd>
+    <dt>Plasma</dt><dd>Gas so hot its atoms are split into ions and electrons. It conducts electricity and is tied to magnetic fields.</dd>
+    <dt>Plasma beta (β)</dt><dd>Gas pressure divided by magnetic pressure. β ≪ 1 means the field dominates.</dd>
+    <dt>Plasmoid</dt><dd>A magnetic island formed when a long current sheet breaks up. Plasmoids make reconnection fast.</dd>
+    <dt>RTSW</dt><dd>NOAA's Real-Time Solar Wind data from L1 spacecraft.</dd>
+    <dt>NOAA scales (R, S, G)</dt><dd>Radio blackout (flares), Solar radiation storm (particles) and Geomagnetic storm (CMEs), each from 1 (minor) to 5 (extreme).</dd>
+  </dl>
+
+  <h2>References</h2>
+  <ol class="refs">
+    <li>Priest, E. &amp; Forbes, T. (2000). <i>Magnetic Reconnection: MHD Theory and Applications</i>. Cambridge University Press.</li>
+    <li>Qiu, J. et al.: reconnection rates from flare ribbons. See e.g. <a href="https://arxiv.org/pdf/1509.07089" target="_blank" rel="noopener">Magnetic Reconnection Rates and Energy Release in a Confined X-class Flare (arXiv:1509.07089)</a>.</li>
+    <li>Kazachenko, M. et al. (2017). <a href="https://iopscience.iop.org/article/10.3847/1538-4357/aa7ed6" target="_blank" rel="noopener">A Database of Flare Ribbon Properties from SDO. I. Reconnection Flux</a>. ApJ 845, 49.</li>
+    <li><a href="https://arxiv.org/pdf/1504.02905" target="_blank" rel="noopener">The Roles of Reconnected Flux and Overlying Fields in CME Speeds (arXiv:1504.02905)</a>.</li>
+    <li><a href="https://arxiv.org/pdf/2505.11186" target="_blank" rel="noopener">On the Magnetic Reconnection and its Properties during a Flare Using an MHD Simulation (arXiv:2505.11186)</a>.</li>
+    <li>Neupert, W. M. (1968). Comparison of solar X-ray line emission with microwave emission during flares. ApJ 153, L59.</li>
+    <li>Zhang, J. et al. (2001). On the temporal relationship between CMEs and flares. ApJ 559, 452.</li>
+    <li>Vršnak, B. et al. (2013). Propagation of interplanetary CMEs: the drag-based model. Solar Physics 285, 295. See also <a href="https://ccmc.gsfc.nasa.gov/static/files/CDBM_info.pdf" target="_blank" rel="noopener">CCMC DBM description</a>, <a href="https://arxiv.org/pdf/2201.12049" target="_blank" rel="noopener">DBM parameter distributions (arXiv:2201.12049)</a> and <a href="https://iopscience.iop.org/article/10.3847/1538-4357/aaaa66" target="_blank" rel="noopener">Drag-Based Ensemble Model (ApJ)</a>.</li>
+    <li>Newell, P. T. et al. (2007). <a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2006JA012015" target="_blank" rel="noopener">A nearly universal solar wind–magnetosphere coupling function</a>. JGR 112, A01206.</li>
+    <li>Shue, J.-H. et al. (1998). Magnetopause location under extreme solar wind conditions. JGR 103, 17691.</li>
+    <li>Burton, R. K., McPherron, R. L. &amp; Russell, C. T. (1975). An empirical relationship between interplanetary conditions and Dst. JGR 80, 4204.</li>
+    <li>NOAA SWPC data services: <a href="https://services.swpc.noaa.gov/json/" target="_blank" rel="noopener">services.swpc.noaa.gov/json</a> · NASA DONKI: <a href="https://kauai.ccmc.gsfc.nasa.gov/DONKI/" target="_blank" rel="noopener">kauai.ccmc.gsfc.nasa.gov/DONKI</a>.</li>
+  </ol>
+  <div class="pager"><a href="#future"><small>Previous</small>← 11 · Future scope</a><a href="#start"><small>Back to</small>00 · Start here ↺</a></div>
+</section>
+
+</main>
+</div>
+
+<script>
+/* =================================================================== constants & helpers */
+const MU0 = 4e-7 * Math.PI, MP = 1.6726e-27, KB = 1.380649e-23;
+const RSUN = 695700, AU = 1.496e8;
+const $ = (id) => document.getElementById(id);
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const fmt = (x, d = 0) => Number(x).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d });
+function sci(x, d = 1) {
+  if (!isFinite(x) || x === 0) return String(x);
+  const e = Math.floor(Math.log10(Math.abs(x)));
+  const m = x / Math.pow(10, e);
+  const sup = String(e).replace(/-/g, "⁻").replace(/\d/g, (c) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c]);
+  return `${m.toFixed(d)} × 10${sup}`;
+}
+function flareClass(f) {
+  if (!(f > 0)) return "—";
+  const L = [["X", 1e-4], ["M", 1e-5], ["C", 1e-6], ["B", 1e-7], ["A", 1e-8]];
+  for (const [l, b] of L) if (f >= b) return l + (f / b).toFixed(1);
+  return "A" + (f / 1e-8).toFixed(1);
+}
+const median = (a) => { const s = a.filter((x) => x != null && isFinite(x)).sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : NaN; };
+const badge = (k) => `<span class="badge ${k}">${{ live: "Live", cat: "Catalogue", model: "Model", const: "Constant" }[k]}</span>`;
+
+/* =================================================================== physics */
+const alfven = (Bg, ncm3) => (Bg * 1e-4) / Math.sqrt(MU0 * ncm3 * 1e6 * MP) / 1e3;   // km/s
+const energyErg = (Bg, Lmm) => ((Bg * 1e-4) ** 2 / (2 * MU0)) * (Lmm * 1e6) ** 3 * 1e7;
+const spitzerEta = (T) => 1e9 * Math.pow(T, -1.5);                                    // m^2/s
+function newell(v, by, bz) {
+  const bt = Math.hypot(by, bz), th = Math.atan2(by, bz);
+  return Math.pow(v, 4 / 3) * Math.pow(bt, 2 / 3) * Math.pow(Math.abs(Math.sin(th / 2)), 8 / 3);
+}
+function dbm(v0, w, gammaKm, hours = 200, dtS = 600) {
+  const r0 = 20 * RSUN, d = v0 - w, s = d >= 0 ? 1 : -1;
+  const t = [], v = [], r = [];
+  let arrival = null, vArr = null;
+  for (let ts = 0; ts <= hours * 3600; ts += dtS) {
+    const den = 1 + s * gammaKm * d * ts;
+    const vi = d / den + w;
+    const ri = (s / gammaKm) * Math.log(den) + w * ts + r0;
+    t.push(ts / 3600); v.push(vi); r.push(ri / AU);
+    if (arrival === null && ri >= AU) { arrival = ts / 3600; vArr = vi; }
+  }
+  return { t, v, r, arrival, vArr };
+}
+
+/* =================================================================== data loading */
+const DATA = { goes: null, sw: null, cmes: null, flares: null, src: {} };
+async function fetchJSON(url, ms = 12000) {
+  const c = new AbortController(); const id = setTimeout(() => c.abort(), ms);
+  try { const r = await fetch(url, { signal: c.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); }
+  finally { clearTimeout(id); }
+}
+function iso(d) { return d.toISOString().slice(0, 10); }
+async function loadData() {
+  const S = window.SNAPSHOT || { goes: [], sw: [], cmes: [], flares: [], generated: "n/a" };
+  const base = "https://services.swpc.noaa.gov/json/";
+  const today = new Date(), past = new Date(Date.now() - 30 * 864e5);
+  const jobs = [
+    fetchJSON(base + "goes/primary/xrays-3-day.json").then((j) => {
+      DATA.goes = j.filter((r) => r.energy === "0.1-0.8nm" && r.flux).map((r) => [r.time_tag, r.flux]).sort((a, b) => a[0] < b[0] ? -1 : 1);
+      DATA.src.goes = "live";
+    }).catch(() => { DATA.goes = S.goes; DATA.src.goes = "snapshot"; }),
+    Promise.all([fetchJSON(base + "rtsw/rtsw_mag_1m.json"), fetchJSON(base + "rtsw/rtsw_wind_1m.json")]).then(([mag, wind]) => {
+      const m = new Map(mag.filter((r) => r.active && r.bz_gsm != null).map((r) => [r.time_tag, r]));
+      DATA.sw = wind.filter((r) => r.active && r.proton_speed && m.has(r.time_tag)).map((r) => {
+        const g = m.get(r.time_tag); return [r.time_tag + "Z", r.proton_speed, r.proton_density, g.by_gsm, g.bz_gsm, g.bt];
+      }).sort((a, b) => a[0] < b[0] ? -1 : 1);
+      if (!DATA.sw.length) throw new Error("empty");
+      DATA.src.sw = "live";
+    }).catch(() => { DATA.sw = S.sw; DATA.src.sw = "snapshot"; }),
+    fetchJSON(`https://api.nasa.gov/DONKI/CMEAnalysis?startDate=${iso(past)}&endDate=${iso(today)}&mostAccurateOnly=true&api_key=DEMO_KEY`).then((j) => {
+      DATA.cmes = j.filter((c) => c.speed).map((c) => ({ time: c.time21_5, speed: c.speed, lat: c.latitude, lon: c.longitude, halfAngle: c.halfAngle, id: c.associatedCMEID }));
+      if (!DATA.cmes.length) throw new Error("empty");
+      DATA.src.cmes = "live";
+    }).catch(() => { DATA.cmes = S.cmes; DATA.src.cmes = "snapshot"; }),
+    fetchJSON(base + "goes/primary/xray-flares-7-day.json").then((j) => {
+      DATA.flares = j.filter((f) => f.max_class).map((f) => ({ begin: f.begin_time, max: f.max_time, end: f.end_time, cls: f.max_class }));
+      DATA.src.flares = "live";
+    }).catch(() => { DATA.flares = S.flares; DATA.src.flares = "snapshot"; }),
+  ];
+  await Promise.all(jobs);
+  DATA.snapshotTime = S.generated;
+  prepare();
+  const allLive = Object.values(DATA.src).every((s) => s === "live");
+  $("dataStatus").innerHTML = allLive
+    ? `${badge("live")} All feeds live · ${new Date().toUTCString().slice(17, 22)} UTC`
+    : `Some feeds unavailable. Using snapshot from ${S.generated.replace("T", " ")} UTC for: ${Object.entries(DATA.src).filter(([, v]) => v !== "live").map(([k]) => k).join(", ")}`;
+}
+
+/* clean GOES: drop eclipse dropouts, break lines at gaps, derivative (Neupert proxy) */
+function prepare() {
+  const g = DATA.goes.map(([t, f]) => [new Date(t), f]);
+  const vals = g.map((x) => x[1]);
+  const W = 60;
+  const clean = g.map(([t, f], i) => {
+    const win = vals.slice(Math.max(0, i - W), i + W).slice().sort((a, b) => a - b);
+    const base = win[Math.floor(win.length / 2)];
+    return [t, f < 0.3 * base ? null : f];
+  });
+  const T = [], F = [];
+  for (let i = 0; i < clean.length; i++) {
+    if (i > 0 && clean[i][0] - clean[i - 1][0] > 3 * 60e3) { T.push(new Date(+clean[i - 1][0] + 60e3)); F.push(null); }
+    T.push(clean[i][0]); F.push(clean[i][1]);
+  }
+  const sm = F.map((_, i) => {
+    const w = F.slice(Math.max(0, i - 2), i + 3);
+    return w.some((x) => x == null) ? null : w.reduce((a, b) => a + b, 0) / w.length;
+  });
+  const dF = sm.map((_, i) => {
+    if (i === 0 || i === sm.length - 1 || sm[i - 1] == null || sm[i + 1] == null) return null;
+    const d = (sm[i + 1] - sm[i - 1]) / ((T[i + 1] - T[i - 1]) / 1000);
+    return d > 0 ? d : 0;
+  });
+  DATA.goesT = T; DATA.goesF = F; DATA.goesD = dF;
+  let pk = 0; F.forEach((f, i) => { if (f != null && f > (F[pk] || 0)) pk = i; });
+  DATA.goesPeak = { t: T[pk], f: F[pk] };
+  const lastI = F.map((f, i) => [f, i]).filter(([f]) => f != null).pop();
+  DATA.goesNow = lastI ? { t: T[lastI[1]], f: lastI[0] } : null;
+
+  const sw = DATA.sw;
+  DATA.swT = sw.map((r) => new Date(r[0]));
+  DATA.swV = sw.map((r) => r[1]); DATA.swN = sw.map((r) => r[2]);
+  DATA.swBy = sw.map((r) => r[3]); DATA.swBz = sw.map((r) => r[4]); DATA.swBt = sw.map((r) => r[5]);
+  DATA.swNewell = sw.map((r) => newell(r[1], r[3], r[4]));
+  DATA.wMedian = median(DATA.swV);
+  DATA.nMedian = median(DATA.swN);
+  DATA.cmes.sort((a, b) => b.speed - a.speed);
+}
+
+/* =================================================================== chart theming */
+function theme() {
+  return {
+    ink: css("--ink"), ink2: css("--ink-2"), muted: css("--muted"), rule: css("--rule"), bg: css("--surface"),
+    s1: css("--s1"), s2: css("--s2"), s3: css("--s3"), s4: css("--s4"),
+  };
+}
+function axis(c, extra = {}) {
+  return Object.assign({ gridcolor: c.rule, zerolinecolor: c.rule, linecolor: c.rule, tickfont: { color: c.ink2, size: 11 }, title: { font: { color: c.ink2, size: 12 } } }, extra);
+}
+function layout(c, extra = {}) {
+  return Object.assign({
+    paper_bgcolor: c.bg, plot_bgcolor: c.bg, font: { family: "Inter, sans-serif", color: c.ink, size: 12 },
+    margin: { l: 70, r: 20, t: 30, b: 50 }, hovermode: "x unified",
+    hoverlabel: { bgcolor: c.bg, bordercolor: c.rule, font: { color: c.ink } },
+    legend: { orientation: "h", x: 0, y: 1.02, yanchor: "bottom", font: { color: c.ink2 } },
+  }, extra);
+}
+const CFG = { displaylogo: false, responsive: true, modeBarButtonsToRemove: ["lasso2d", "select2d", "autoScale2d", "toggleSpikelines"] };
+function panelTitle(text, y, c) { return { text: `<b>${text}</b>`, xref: "paper", yref: "paper", x: 0, y, xanchor: "left", yanchor: "bottom", showarrow: false, font: { size: 12, color: c.ink } }; }
+const plot = (id, traces, lay) => Plotly.react($(id), traces, lay, CFG);
+
+/* =================================================================== page 00: tiles */
+function renderTiles() {
+  const lastSW = DATA.sw.length - 1;
+  const bz = DATA.swBz[lastSW], v = DATA.swV[lastSW];
+  const nw = DATA.swNewell[lastSW], nwMax = Math.max(...DATA.swNewell);
+  const fastest = DATA.cmes[0];
+  const src = (k) => DATA.src[k] === "live" ? badge(k === "cmes" ? "cat" : "live") : `<span class="badge const">Snapshot</span>`;
+  const tiles = [
+    ["X-ray level now", flareClass(DATA.goesNow && DATA.goesNow.f), `GOES 0.1–0.8 nm ${src("goes")}`],
+    ["Biggest flare (3 days)", flareClass(DATA.goesPeak.f), `${DATA.goesPeak.t.toUTCString().slice(5, 22)} UTC`],
+    ["Solar wind speed", `${fmt(v)} km/s`, `at L1 ${src("sw")}`],
+    ["IMF Bz", `${bz > 0 ? "+" : ""}${fmt(bz, 1)} nT`, bz < 0 ? "southward: can reconnect" : "northward: shield closed"],
+    ["Earth coupling", `${fmt(100 * nw / nwMax)}%`, `of the last 24 h peak ${badge("model")}`],
+    ["Fastest CME (30 days)", `${fmt(fastest.speed)} km/s`, `${(fastest.time || "").slice(0, 10)} ${src("cmes")}`],
+  ];
+  $("liveTiles").innerHTML = tiles.map(([k, v, s]) => `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`).join("");
+}
+
+/* =================================================================== page 02: engine */
+function engineState() {
+  const B = +$("bIn").value, L = +$("lIn").value, n = Math.pow(10, +$("nIn").value), T = Math.pow(10, +$("tIn").value);
+  return { B, L, n, T };
+}
+function renderEngine() {
+  const { B, L, n, T } = engineState();
+  $("bVal").textContent = `${B} G`; $("lVal").textContent = `${L} Mm`; $("nVal").textContent = `${sci(n, 1)} cm⁻³`; $("tVal").textContent = `${sci(T, 1)} K`;
+  const uB = (B * 1e-4) ** 2 / (2 * MU0);
+  const E = energyErg(B, L);
+  const vA = alfven(B, n);
+  const beta = (2 * n * 1e6 * KB * T) / uB;
+  const cls = E >= 1e32 ? "X-class" : E >= 1e31 ? "M-class" : E >= 1e30 ? "C-class" : "below C-class";
+  $("engineOut").innerHTML = [
+    ["Energy density u_B", `${fmt(uB, 1)} J/m³`],
+    ["Stored energy E", `${sci(E)} erg`],
+    ["Could power (if ~all released)", cls],
+    ["Alfvén speed vA", `${fmt(vA)} km/s`],
+    ["Plasma beta β", sci(beta, 1)],
+  ].map(([k, v]) => `<div class="ro"><div class="k">${k}</div><div class="v">${v}</div></div>`).join("");
+  const c = theme();
+  const Bs = Array.from({ length: 120 }, (_, i) => 20 + i * 4);
+  const cols = [c.s1, c.s2, c.s3, c.s4];
+  const traces = [10, 30, 60, 100].map((Lm, i) => ({ x: Bs, y: Bs.map((b) => energyErg(b, Lm)), name: `L = ${Lm} Mm`, line: { color: cols[i], width: 2 }, hovertemplate: "%{y:.2e} erg" }));
+  traces.push({ x: [B], y: [E], name: "Your setting", mode: "markers", marker: { size: 11, color: c.ink }, hovertemplate: "%{y:.2e} erg" });
+  const shapes = [[1e30, "≈ C flare"], [1e31, "≈ M flare"], [1e32, "≈ X flare"]];
+  plot("energyChart", traces, layout(c, {
+    margin: { l: 70, r: 20, t: 50, b: 50 },
+    xaxis: axis(c, { title: { text: "Magnetic field B (gauss)", font: { color: c.ink2 } } }),
+    yaxis: axis(c, { type: "log", title: { text: "Stored energy (erg)", font: { color: c.ink2 } } }),
+    shapes: shapes.map(([y]) => ({ type: "line", xref: "paper", x0: 0, x1: 1, y0: y, y1: y, line: { color: c.muted, dash: "dot", width: 1 } })),
+    annotations: shapes.map(([y, t]) => ({ text: t, xref: "paper", x: 1, y: Math.log10(y), xanchor: "right", yanchor: "bottom", showarrow: false, font: { size: 11, color: c.ink2 } })),
+  }));
+  if (rendered.has("reconnection")) renderRates();
+}
+
+/* =================================================================== page 03: rates + X-point */
+function renderRates() {
+  const { B, L, n, T } = engineState();
+  const vA = alfven(B, n) * 1e3, eta = spitzerEta(T), S = (L * 1e6) * vA / eta;
+  const Ss = Array.from({ length: 141 }, (_, i) => Math.pow(10, 2 + i * 0.1));
+  const c = theme();
+  const sp = (s) => Math.pow(s, -0.5), pk = (s) => Math.PI / (8 * Math.log(s));
+  plot("rateChart", [
+    { x: Ss, y: Ss.map(sp), name: "Sweet–Parker (1957)", line: { color: c.s1, width: 2 }, hovertemplate: "M = %{y:.2e}" },
+    { x: Ss, y: Ss.map(pk), name: "Petschek (1964)", line: { color: c.s2, width: 2 }, hovertemplate: "M = %{y:.3f}" },
+    { x: Ss, y: Ss.map(() => 0.01), name: "Plasmoid / turbulent", line: { color: c.s4, width: 2, dash: "dash" }, hovertemplate: "M ≈ 0.01" },
+    { x: [S, S], y: [sp(S), pk(S)], name: "Your region", mode: "markers", marker: { size: 11, color: c.ink }, hovertemplate: "S = %{x:.1e}<br>M = %{y:.2e}" },
+  ], layout(c, {
+    hovermode: "closest", margin: { l: 70, r: 20, t: 50, b: 50 },
+    xaxis: axis(c, { type: "log", title: { text: "Lundquist number S", font: { color: c.ink2 } }, exponentformat: "power" }),
+    yaxis: axis(c, { type: "log", title: { text: "Reconnection rate M = v_in / vA", font: { color: c.ink2 } }, exponentformat: "power" }),
+    shapes: [{ type: "rect", xref: "paper", x0: 0, x1: 1, y0: 0.01, y1: 0.1, fillcolor: c.s3, opacity: 0.13, line: { width: 0 } }],
+    annotations: [{ text: "Observed in flares", xref: "paper", x: 0.98, y: -1.4, xanchor: "right", showarrow: false, font: { size: 11, color: c.ink2 } }],
+  }));
+  const rows = [["Sweet–Parker", sp(S)], ["Petschek", pk(S)], ["Plasmoid / turbulent", 0.01]].map(([name, M]) => {
+    const tau = (L * 1e6) / (M * vA);
+    const tt = tau > 86400 * 2 ? `${fmt(tau / 86400)} days ❌` : tau > 3600 ? `${fmt(tau / 3600, 1)} hours` : `${fmt(tau / 60, 1)} minutes ✅`;
+    return `<tr><td>${name}</td><td>${M < 1e-3 ? sci(M) : M.toFixed(3)}</td><td>${M * vA < 1e3 ? sci(M * vA / 1e3) + " km/s (≈ " + fmt(M * vA * 3.6, 1) + " km/h, walking pace)" : fmt(M * vA / 1e3) + " km/s"}</td><td>${tt}</td></tr>`;
+  }).join("");
+  $("rateTable").innerHTML = `<tr><th>Model</th><th>Rate M</th><th>Inflow v_in</th><th>Time to reconnect your ${L} Mm region (S = ${sci(S)})</th></tr>` + rows;
+}
+
+let xpState = { phase: 0, last: 0, running: false };
+function xpointFrame(ts) {
+  const cv = $("xpoint"); if (!cv) return;
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+  const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const c = theme();
+  ctx.fillStyle = c.bg; ctx.fillRect(0, 0, W, H);
+  const M = Math.pow(10, +$("mIn").value);
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const dt = xpState.last ? Math.min(0.05, (ts - xpState.last) / 1000) : 0;
+  xpState.last = ts;
+  if (!reduce) xpState.phase = (xpState.phase + dt * (0.02 + M * 4)) % 1;
+  const cx = W / 2, cy = H / 2, hw = W / 2 - 10, hh = H / 2 - 10;
+  const C = Math.min(hw, hh) ** 2 * 0.9;
+  const N = 7;
+  ctx.lineWidth = 2;
+  for (let k = 0; k < N; k++) {
+    const p = (xpState.phase + k / N) % 1;
+    const cval = C * (1 - 2 * p);
+    const alpha = Math.min(1, Math.abs(1 - 2 * p) * 3 + 0.15);
+    ctx.globalAlpha = alpha;
+    if (cval > 0) {
+      ctx.strokeStyle = c.s1;
+      for (const sgn of [-1, 1]) {
+        ctx.beginPath();
+        for (let y = -hh; y <= hh; y += 4) { const x = sgn * Math.sqrt(cval + y * y); const px = cx + x, py = cy + y; y === -hh ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+        ctx.stroke();
+      }
+    } else {
+      ctx.strokeStyle = c.s2;
+      for (const sgn of [-1, 1]) {
+        ctx.beginPath();
+        for (let x = -hw; x <= hw; x += 4) { const y = sgn * Math.sqrt(-cval + x * x); const px = cx + x, py = cy + y; x === -hw ? ctx.moveTo(px, py) : ctx.lineTo(px, py); }
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = c.ink; ctx.font = "600 13px Inter, sans-serif"; ctx.textAlign = "center";
+  ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 2 * Math.PI); ctx.fill();
+  const label = (t, x, y) => { ctx.fillStyle = c.bg; const w = ctx.measureText(t).width + 10; ctx.fillRect(x - w / 2, y - 14, w, 19); ctx.fillStyle = c.ink; ctx.fillText(t, x, y); };
+  label("X-point", cx, cy - 12);
+  label("→ inflow", cx - hw * 0.55, cy + 4);
+  label("inflow ←", cx + hw * 0.55, cy + 4);
+  label("↑ outflow jet (toward CME)", cx, 22);
+  label("↓ outflow jet (toward flare loops)", cx, H - 10);
+  if (xpState.running) requestAnimationFrame(xpointFrame);
+}
+function setMLabel() { $("mVal").textContent = Math.pow(10, +$("mIn").value).toFixed(3); }
+
+/* =================================================================== page 04: GOES + event model */
+function renderGoes() {
+  const c = theme();
+  const classes = [[1e-8, "A"], [1e-7, "B"], [1e-6, "C"], [1e-5, "M"], [1e-4, "X"]];
+  const fmax = Math.max(...DATA.goesF.filter((f) => f != null));
+  plot("goesChart", [
+    { x: DATA.goesT, y: DATA.goesF, name: "X-ray flux", line: { color: c.s2, width: 1.5 }, connectgaps: false, hovertemplate: "%{y:.2e} W/m²", yaxis: "y2" },
+    { x: DATA.goesT, y: DATA.goesD, name: "Rising slope (reconnection proxy)", fill: "tozeroy", line: { color: c.s1, width: 1.2 }, fillcolor: c.s1 + "40", connectgaps: false, hovertemplate: "%{y:.2e} W/m²/s", yaxis: "y" },
+  ], layout(c, {
+    showlegend: false, margin: { l: 70, r: 30, t: 30, b: 40 },
+    xaxis: axis(c, { type: "date", anchor: "y" }),
+    yaxis: axis(c, { domain: [0, 0.34], title: { text: "d(flux)/dt", font: { color: c.ink2 } }, exponentformat: "power" }),
+    yaxis2: axis(c, { domain: [0.46, 1], type: "log", range: [-8, Math.log10(Math.max(3e-4, fmax * 2))], title: { text: "W/m²", font: { color: c.ink2 } }, exponentformat: "power" }),
+    shapes: classes.map(([y]) => ({ type: "line", xref: "paper", yref: "y2", x0: 0, x1: 1, y0: y, y1: y, line: { color: c.muted, dash: "dot", width: 1 } })),
+    annotations: classes.map(([y, l]) => ({ text: l, xref: "paper", yref: "y2", x: 1.01, y: Math.log10(y) + 0.5, xanchor: "left", showarrow: false, font: { size: 11, color: c.ink2 } }))
+      .concat([panelTitle("Soft X-ray flux: the flare curve", 1.0, c), panelTitle("Its rising slope: when reconnection is working (Neupert effect)", 0.35, c)]),
+  }));
+  const pkCls = flareClass(DATA.goesPeak.f), nowCls = flareClass(DATA.goesNow && DATA.goesNow.f);
+  document.querySelectorAll("#ladder .rung").forEach((r) => {
+    const L = r.querySelector("b").textContent; r.classList.remove("here"); const old = r.querySelector(".tag"); if (old) old.remove();
+    const tags = []; if (pkCls[0] === L) tags.push(`3-day peak ${pkCls}`); if (nowCls[0] === L) tags.push(`now ${nowCls}`);
+    if (tags.length) { r.classList.add("here"); r.insertAdjacentHTML("beforeend", `<span class="tag">◀ ${tags.join(" · ")}</span>`); }
+  });
+  $("ladderCaption").innerHTML = `Highlighted: where the Sun is today (${badge("live")} GOES). Most days sit in B–C; an X flare is 100–1,000× brighter.`;
+  const big = DATA.flares.slice().sort((a, b) => clsVal(b.cls) - clsVal(a.cls))[0];
+  $("goesCaption").innerHTML = `${DATA.src.goes === "live" ? badge("live") : '<span class="badge const">Snapshot</span>'} GOES-18, last 3 days. Peak <b>${flareClass(DATA.goesPeak.f)}</b> at ${DATA.goesPeak.t.toUTCString().slice(5, 22)} UTC. Dotted lines mark class thresholds; gaps are eclipse dropouts (removed, not hidden).${big ? ` Largest flare in NOAA's 7-day list: <b>${big.cls}</b> (peak ${big.max.slice(0, 16).replace("T", " ")} UTC).` : ""}`;
+}
+function clsVal(s) { const b = { A: 1e-8, B: 1e-7, C: 1e-6, M: 1e-5, X: 1e-4 }[s[0]] || 0; return b * parseFloat(s.slice(1) || 1); }
+
+function eventModel(Mpk, wMin, tauMin) {
+  const n = 901, dt = 0.1, t = [], rec = [];
+  for (let i = 0; i < n; i++) { const ti = i * dt; t.push(ti); rec.push(Mpk * Math.exp(-(((ti - 20) / wMin) ** 2)) + 0.002); }
+  const s = [0];
+  for (let i = 1; i < n; i++) s.push(s[i - 1] + (rec[i - 1] - s[i - 1] / tauMin) * dt);
+  return { t, rec, s };
+}
+const EV_REF = (() => { const r = eventModel(0.06, 6, 12); return Math.max(...r.s); })();
+function renderEvent() {
+  const Mpk = +$("evM").value, w = +$("evW").value, tau = +$("evT").value;
+  $("evMVal").textContent = Mpk.toFixed(3); $("evWVal").textContent = `${w} min`; $("evTVal").textContent = `${tau} min`;
+  const { t, rec, s } = eventModel(Mpk, w, tau);
+  const sxr = s.map((x) => 1e-6 + 5e-5 * x / EV_REF);
+  const accK = 1.2 / 0.062;
+  const acc = rec.map((m) => accK * m);
+  const v = []; let vi = 100; acc.forEach((a) => { vi += a * 6; v.push(vi); });
+  const grad = sxr.map((_, i) => i ? sxr[i] - sxr[i - 1] : 0);
+  const iRise = grad.indexOf(Math.max(...grad)), iPk = sxr.indexOf(Math.max(...sxr)), iRec = rec.indexOf(Math.max(...rec));
+  $("evOut").innerHTML = [
+    ["Flare peak class", flareClass(sxr[iPk])],
+    ["X-ray peak after reconnection peak", `${fmt(t[iPk] - t[iRec], 1)} min`],
+    ["CME final speed", `${fmt(v[v.length - 1])} km/s`],
+    ["Energy released (relative)", `${fmt(100 * Math.max(...s) / EV_REF)}%`],
+  ].map(([k, x]) => `<div class="ro"><div class="k">${k}</div><div class="v">${x}</div></div>`).join("");
+  const c = theme();
+  const dom = [[0.79, 1], [0.53, 0.74], [0.27, 0.48], [0, 0.22]];
+  plot("eventChart", [
+    { x: t, y: rec, name: "Reconnection rate M", line: { color: c.s1, width: 2 }, yaxis: "y4", hovertemplate: "M = %{y:.3f}" },
+    { x: t, y: sxr, name: "Soft X-ray flux", line: { color: c.s2, width: 2 }, yaxis: "y3", hovertemplate: "%{y:.2e} W/m²" },
+    { x: t, y: acc, name: "CME acceleration", line: { color: c.s3, width: 2 }, yaxis: "y2", hovertemplate: "%{y:.2f} km/s²" },
+    { x: t, y: v, name: "CME speed", line: { color: c.s1, width: 2 }, yaxis: "y", hovertemplate: "%{y:.0f} km/s" },
+  ], layout(c, {
+    showlegend: false, margin: { l: 70, r: 20, t: 30, b: 50 },
+    xaxis: axis(c, { anchor: "y", title: { text: "Minutes since onset", font: { color: c.ink2 } } }),
+    yaxis: axis(c, { domain: dom[3], title: { text: "km/s", font: { color: c.ink2 } } }),
+    yaxis2: axis(c, { domain: dom[2], title: { text: "km/s²", font: { color: c.ink2 } } }),
+    yaxis3: axis(c, { domain: dom[1], type: "log", title: { text: "W/m²", font: { color: c.ink2 } }, exponentformat: "power" }),
+    yaxis4: axis(c, { domain: dom[0], title: { text: "M", font: { color: c.ink2 } } }),
+    shapes: [{ type: "line", xref: "x", yref: "paper", x0: t[iRise], x1: t[iRise], y0: 0, y1: 1, line: { color: c.muted, dash: "dash", width: 1 } }],
+    annotations: [
+      panelTitle("① Reconnection rate: the engine", dom[0][1], c),
+      panelTitle("② Flare soft X-rays (what GOES sees)", dom[1][1], c),
+      panelTitle("③ CME acceleration: peaks with the X-ray rise", dom[2][1], c),
+      panelTitle("④ CME speed: then coasts", dom[3][1], c),
+    ],
+  }));
+}
+
+/* =================================================================== page 05: CMEs + DBM */
+function renderCmeHist() {
+  const c = theme();
+  plot("cmeHist", [{ x: DATA.cmes.map((x) => x.speed), type: "histogram", xbins: { start: 0, size: 100 }, marker: { color: c.s1, line: { color: c.bg, width: 2 } }, hovertemplate: "%{x} km/s: %{y} CMEs<extra></extra>" }],
+    layout(c, { hovermode: "closest", bargap: 0, xaxis: axis(c, { title: { text: "CME speed (km/s)", font: { color: c.ink2 } } }), yaxis: axis(c, { title: { text: "Number of CMEs", font: { color: c.ink2 } } }) }));
+  const fast = DATA.cmes.filter((x) => x.speed >= 1000).length;
+  $("cmeHistCaption").innerHTML = `${DATA.src.cmes === "live" ? badge("cat") : '<span class="badge const">Snapshot</span>'} ${DATA.cmes.length} CMEs catalogued by NASA DONKI in the last 30 days; ${fast} faster than 1,000 km/s. Most CMEs are slow, and fast ones are rare and dangerous.`;
+}
+function initDbm() {
+  const sel = $("cmePick");
+  sel.innerHTML = `<option value="">Custom (use the slider)</option>` + DATA.cmes.slice(0, 20).map((x, i) =>
+    `<option value="${i}">${fmt(x.speed)} km/s · ${(x.time || "").slice(0, 16).replace("T", " ")} · lon ${x.lon}°</option>`).join("");
+  sel.onchange = () => { if (sel.value !== "") { $("v0In").value = DATA.cmes[+sel.value].speed; renderDbm(); } };
+  $("wIn").value = Math.round(DATA.wMedian);
+  if (DATA.cmes[0]) { sel.value = "0"; $("v0In").value = DATA.cmes[0].speed; }
+}
+function renderDbm() {
+  const v0 = +$("v0In").value, w = +$("wIn").value, g = +$("gIn").value;
+  $("v0Val").textContent = `${v0} km/s`; $("wVal").textContent = `${w} km/s${Math.abs(w - Math.round(DATA.wMedian)) < 1 ? " (live)" : ""}`; $("gVal").textContent = g.toFixed(2);
+  const r = dbm(v0, w, g * 1e-7);
+  const lo = dbm(v0, w, 0.1e-7), hi = dbm(v0, w, 2e-7);
+  const noDrag = ((AU - 20 * RSUN) / v0) / 3600;
+  const sel = $("cmePick").value, cme = sel !== "" ? DATA.cmes[+sel] : null;
+  let dir = "—";
+  if (cme && cme.lon != null) {
+    const hit = Math.abs(cme.lon) <= (cme.halfAngle || 0) + 20 && Math.abs(cme.lat) <= (cme.halfAngle || 0) + 20;
+    dir = hit ? "Possibly Earth-directed" : "Likely misses Earth";
+  }
+  const arrT = r.arrival != null ? `${fmt(r.arrival, 1)} h (${fmt(r.arrival / 24, 1)} days)` : "> 200 h";
+  $("dbmOut").innerHTML = [
+    ["Arrival at Earth", arrT],
+    ["Impact speed", r.vArr ? `${fmt(r.vArr)} km/s` : "—"],
+    ["Window for γ = 0.1–2", `${lo.arrival ? fmt(Math.min(lo.arrival, hi.arrival || 1e9)) : "?"}–${hi.arrival ? fmt(Math.max(lo.arrival || 0, hi.arrival)) : "?"} h`],
+    ["If there were no drag", `${fmt(noDrag, 1)} h`],
+    ["Direction (rough rule)", dir],
+  ].map(([k, x]) => `<div class="ro"><div class="k">${k}</div><div class="v" style="font-size:1rem">${x}</div></div>`).join("");
+  const c = theme();
+  const tt = r.t;
+  const traces = [
+    { x: tt, y: r.v, name: "CME speed", line: { color: c.s2, width: 2 }, yaxis: "y2", hovertemplate: "%{y:.0f} km/s" },
+    { x: [0, tt[tt.length - 1]], y: [w, w], name: "Solar wind w", line: { color: c.muted, width: 1, dash: "dash" }, yaxis: "y2", hoverinfo: "skip" },
+    { x: tt, y: r.r, name: "Distance (with drag)", line: { color: c.s1, width: 2 }, yaxis: "y", hovertemplate: "%{y:.2f} AU" },
+    { x: tt, y: tt.map((h) => (20 * RSUN + v0 * h * 3600) / AU), name: "Distance (no drag)", line: { color: c.muted, width: 1.5, dash: "dot" }, yaxis: "y", hovertemplate: "%{y:.2f} AU" },
+  ];
+  if (r.arrival != null) traces.push({ x: [r.arrival], y: [1], mode: "markers", name: "Arrival", marker: { size: 12, color: c.s1, line: { color: c.bg, width: 2 } }, yaxis: "y", hovertemplate: "Arrives %{x:.1f} h" });
+  const xmax = Math.min(200, Math.max(40, (r.arrival || 120) * 1.4));
+  plot("dbmChart", traces, layout(c, {
+    margin: { l: 70, r: 20, t: 30, b: 90 },
+    legend: { orientation: "h", x: 0, y: -0.14, yanchor: "top", font: { color: c.ink2 } },
+    xaxis: axis(c, { anchor: "y", range: [0, xmax], title: { text: "Hours after passing 20 solar radii", font: { color: c.ink2 } } }),
+    yaxis: axis(c, { domain: [0, 0.44], range: [0, 1.3], title: { text: "AU", font: { color: c.ink2 } } }),
+    yaxis2: axis(c, { domain: [0.56, 1], title: { text: "km/s", font: { color: c.ink2 } } }),
+    shapes: [{ type: "line", xref: "paper", yref: "y", x0: 0, x1: 1, y0: 1, y1: 1, line: { color: c.muted, width: 1 } }],
+    annotations: [panelTitle("CME speed: drag pulls it towards the wind speed", 1, c), panelTitle("Distance from the Sun: Earth is at 1 AU", 0.45, c)],
+  }));
+}
+
+/* =================================================================== page 06: Earth */
+function earthCalc(v, n, by, bz) {
+  const bt = Math.hypot(by, bz), th = Math.atan2(by, bz);
+  const cpl = newell(v, by, bz);
+  const Ey = bz < 0 ? v * (-bz) * 1e-3 : 0;
+  const Pdyn = MP * n * 1e6 * (v * 1e3) ** 2 * 1e9;
+  const rmp = (10.22 + 1.29 * Math.tanh(0.184 * (bz + 8.14))) * Math.pow(Pdyn, -1 / 6.6);
+  const Q = Ey > 0.5 ? -4.4 * (Ey - 0.5) : 0;
+  const DstSS = Q * 7.7;
+  return { bt, th, cpl, Ey, Pdyn, rmp, Q, DstSS };
+}
+function drawDial(th, bt) {
+  const c = theme();
+  const r = 80, x = 100 * Math.sin(th) * 0.8, y = -100 * Math.cos(th) * 0.8;
+  const mag = Math.min(1, 0.35 + bt / 30);
+  $("dial").innerHTML = `
+    <circle r="${r}" fill="none" stroke="${c.rule}" stroke-width="2"/>
+    <path d="M 0 0 L ${-r * Math.sin(Math.PI / 4)} ${r * Math.cos(Math.PI / 4)} A ${r} ${r} 0 0 0 ${r * Math.sin(Math.PI / 4)} ${r * Math.cos(Math.PI / 4)} Z" fill="${c.s2}" opacity="0.15"/>
+    <text y="${-r - 10}" text-anchor="middle" font-size="12" fill="${c.ink2}">North (Bz+)</text>
+    <text y="${r + 20}" text-anchor="middle" font-size="12" fill="${c.ink2}">South (Bz−)</text>
+    <text x="${r + 6}" y="4" font-size="12" fill="${c.ink2}">+By</text>
+    <text x="${-r - 30}" y="4" font-size="12" fill="${c.ink2}">−By</text>
+    <line x1="0" y1="0" x2="${x * mag}" y2="${y * mag}" stroke="${c.accent || c.s2}" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="${x * mag}" cy="${y * mag}" r="6" fill="${c.s2}"/>
+    <circle r="4" fill="${c.ink}"/>`;
+}
+function renderEarth() {
+  const bz = +$("bzIn").value, by = +$("byIn").value, v = +$("vIn").value, n = +$("dnIn").value;
+  $("bzVal").textContent = `${bz > 0 ? "+" : ""}${bz} nT`; $("byVal").textContent = `${by} nT`; $("vVal").textContent = `${v} km/s`; $("dnVal").textContent = `${n} cm⁻³`;
+  const e = earthCalc(v, n, by, bz);
+  const thDeg = ((e.th * 180 / Math.PI) + 360) % 360;
+  const liveMed = median(DATA.swNewell || []);
+  $("earthOut").innerHTML = [
+    ["Clock angle θ", `${fmt(thDeg)}°`],
+    ["B_T (reconnectable field)", `${fmt(e.bt, 1)} nT`],
+    ["Newell coupling", `${fmt(e.cpl)}${isFinite(liveMed) ? ` <span style="font-weight:400;font-size:0.8rem">(${fmt(e.cpl / liveMed, 1)}× today's median)</span>` : ""}`],
+    ["Electric field E_y", `${fmt(e.Ey, 2)} mV/m`],
+    ["Dynamic pressure", `${fmt(e.Pdyn, 2)} nPa`],
+    ["Magnetopause distance", `${fmt(e.rmp, 1)} Earth radii`],
+  ].map(([k, x]) => `<div class="ro"><div class="k">${k}</div><div class="v">${x}</div></div>`).join("");
+  const d = e.DstSS;
+  const verdict = d > -30 ? ["🟢 Quiet", "The shield is mostly closed. Little energy gets in."]
+    : d > -50 ? ["🟡 Active / weak storm", "Some energy is entering. Aurora possible at high latitudes."]
+    : d > -100 ? ["🟠 Moderate storm (≈ NOAA G1–G2)", "Aurora likely at high latitudes, sometimes mid-latitudes."]
+    : d > -250 ? ["🔴 Intense storm (≈ G3–G4)", "Widespread aurora; possible effects on power grids and GPS."]
+    : ["🟣 Extreme storm (≈ G5)", "Rare (a few per solar cycle). Serious technological impacts."];
+  $("earthVerdict").innerHTML = `${verdict[0]}: if these conditions lasted about a day, Dst would settle near <b>${fmt(d)} nT</b>. ${verdict[1]}`;
+  drawDial(e.th, e.bt);
+  const c = theme();
+  const ths = Array.from({ length: 361 }, (_, i) => i);
+  plot("clockChart", [
+    { x: ths, y: ths.map((t) => Math.pow(Math.abs(Math.sin(t * Math.PI / 360)), 8 / 3)), name: "sin^(8/3)(θ/2)", line: { color: c.s1, width: 2 }, hovertemplate: "θ = %{x}°: %{y:.2f}<extra></extra>" },
+    { x: [thDeg], y: [Math.pow(Math.abs(Math.sin(thDeg * Math.PI / 360)), 8 / 3)], mode: "markers", name: "Your setting", marker: { size: 12, color: c.s2 }, hovertemplate: "%{y:.2f}<extra></extra>" },
+  ], layout(c, {
+    showlegend: false, hovermode: "closest", margin: { l: 60, r: 20, t: 20, b: 50 },
+    xaxis: axis(c, { tickvals: [0, 90, 180, 270, 360], ticktext: ["0° north", "90°", "180° south", "270°", "360°"], title: { text: "Clock angle θ", font: { color: c.ink2 } } }),
+    yaxis: axis(c, { range: [0, 1.05], title: { text: "Fraction that can reconnect", font: { color: c.ink2 } } }),
+  }));
+}
+function loadLiveEarth() {
+  const i = DATA.sw.length - 1;
+  $("bzIn").value = DATA.swBz[i]; $("byIn").value = DATA.swBy[i]; $("vIn").value = Math.round(DATA.swV[i]); $("dnIn").value = Math.max(0.5, Math.round(DATA.swN[i] * 2) / 2);
+  renderEarth();
+}
+function renderNewell() {
+  const c = theme();
+  const T = DATA.swT, bz = DATA.swBz;
+  const south = bz.map((b) => b < 0 ? b : 0);
+  const dom = [[0.72, 1], [0.38, 0.62], [0, 0.28]];
+  plot("newellChart", [
+    { x: T, y: south, name: "Southward part", fill: "tozeroy", line: { width: 0 }, fillcolor: c.s2 + "55", yaxis: "y3", hoverinfo: "skip" },
+    { x: T, y: bz, name: "Bz (GSM)", line: { color: c.s1, width: 1.3 }, yaxis: "y3", hovertemplate: "%{y:.1f} nT" },
+    { x: T, y: DATA.swV, name: "Wind speed", line: { color: c.s3, width: 1.3 }, yaxis: "y2", hovertemplate: "%{y:.0f} km/s" },
+    { x: T, y: DATA.swNewell, name: "Newell coupling", line: { color: c.s2, width: 1.3 }, yaxis: "y", hovertemplate: "%{y:.0f}" },
+  ], layout(c, {
+    showlegend: false, margin: { l: 70, r: 20, t: 30, b: 40 },
+    xaxis: axis(c, { type: "date", anchor: "y" }),
+    yaxis: axis(c, { domain: dom[2], title: { text: "dΦ/dt", font: { color: c.ink2 } } }),
+    yaxis2: axis(c, { domain: dom[1], title: { text: "km/s", font: { color: c.ink2 } } }),
+    yaxis3: axis(c, { domain: dom[0], title: { text: "nT", font: { color: c.ink2 } } }),
+    annotations: [panelTitle("IMF Bz: orange = southward (reconnection possible)", dom[0][1], c), panelTitle("Solar wind speed", dom[1][1], c), panelTitle("Newell coupling = Earth's dayside reconnection rate", dom[2][1], c)],
+  }));
+  const southPct = 100 * bz.filter((b) => b < 0).length / bz.length;
+  $("newellCaption").innerHTML = `${DATA.src.sw === "live" ? badge("live") : '<span class="badge const">Snapshot</span>'} NOAA RTSW at L1, last 24 h. Bz was southward <b>${fmt(southPct)}%</b> of the time (most southward ${fmt(Math.min(...bz), 1)} nT), and the median wind speed was ${fmt(DATA.wMedian)} km/s. Coupling jumps whenever Bz turns south.`;
+}
+
+/* =================================================================== page 07: story */
+function renderStory() {
+  const pk = DATA.goesPeak, fl = DATA.flares.slice().sort((a, b) => clsVal(b.cls) - clsVal(a.cls))[0];
+  let dmax = 0, dI = 0; DATA.goesD.forEach((d, i) => { if (d != null && d > dmax) { dmax = d; dI = i; } });
+  const fast = DATA.cmes[0], w = DATA.wMedian, r = fast ? dbm(fast.speed, w, 0.2e-7) : null;
+  const i = DATA.sw.length - 1, e = earthCalc(DATA.swV[i], DATA.swN[i] || 5, DATA.swBy[i], DATA.swBz[i]);
+  const when = (d) => d.toUTCString().slice(5, 22) + " UTC";
+  const steps = [
+    `<b>① Collect.</b> Loaded ${fmt(DATA.goesT.length)} GOES points, ${fmt(DATA.sw.length)} L1 minutes and ${DATA.cmes.length} DONKI CMEs (${Object.entries(DATA.src).map(([k, v]) => `${k}: ${v}`).join(", ")}).`,
+    `<b>② Clean.</b> Eclipse dropouts removed and gaps marked. Only the active L1 spacecraft is kept.`,
+    `<b>③ Detect.</b> The biggest X-ray level in the window was <b>${flareClass(pk.f)}</b> at ${when(pk.t)}${fl ? `; NOAA's 7-day list tops out at <b>${fl.cls}</b>` : ""}.`,
+    `<b>④ Reveal reconnection.</b> The steepest X-ray rise, i.e. the strongest reconnection burst, came at <b>${when(DATA.goesT[dI])}</b>.`,
+    fast ? `<b>⑤ Link to a CME.</b> The fastest CME in the last 30 days left at <b>${fmt(fast.speed)} km/s</b> (${(fast.time || "").slice(0, 16).replace("T", " ")} UTC, longitude ${fast.lon}°).` : `<b>⑤ Link.</b> No CMEs available.`,
+    fast && r ? `<b>⑥ Send across space.</b> In today's ${fmt(w)} km/s wind, a CME at that speed would take <b>${r.arrival ? fmt(r.arrival, 1) + " h" : "over 200 h"}</b> and arrive at about ${r.vArr ? fmt(r.vArr) : "—"} km/s.` : "",
+    `<b>⑦ Coupling at Earth.</b> Right now Bz = ${fmt(DATA.swBz[i], 1)} nT (clock angle ${fmt(((e.th * 180 / Math.PI) + 360) % 360)}°), so Earth's reconnection rate is ${fmt(e.cpl)} and the magnetopause sits at ${fmt(e.rmp, 1)} Earth radii.`,
+    `<b>⑧ Explain.</b> ${e.DstSS > -30 ? "Verdict: <b>quiet</b>. The Sun is producing small flares and Earth's shield is mostly closed." : "Verdict: <b>disturbed</b>. Energy is entering Earth's magnetosphere."}`,
+    `<b>⑨ Export.</b> Each of these facts becomes one row in the event dataset, ready for the projects on page 11.`,
+  ].filter(Boolean);
+  $("storyBox").innerHTML = `<div class="label">Today's walkthrough</div>` + steps.map((s) => `<p>${s}</p>`).join("");
+}
+
+/* =================================================================== page 08: variables */
+const VARS = [
+  { g: "Sun", sym: "B", name: "Magnetic field strength", plain: "How strong the magnetic field is. Field lines packed closer together means stronger.", f: "—", unit: "G (Sun), nT (solar wind)", typ: "Corona 1–500 G · sunspot 1,500–3,500 G · solar wind 2–50 nT", src: "model", ex: "Reference: 100 G = 0.01 T" },
+  { g: "Sun", sym: "n, ρ", name: "Number & mass density", plain: "How many particles per volume, and how much mass they carry.", f: "ρ = n · m_p", unit: "cm⁻³, kg/m³", typ: "Corona 10⁸–10¹¹ cm⁻³ · wind 1–20 cm⁻³", src: "model", ex: "10¹⁵ m⁻³ × 1.67 × 10⁻²⁷ kg = 1.67 × 10⁻¹² kg/m³" },
+  { g: "Sun", sym: "T", name: "Temperature", plain: "How hot the plasma is. It sets the gas pressure and the resistivity.", f: "—", unit: "K", typ: "Corona 1–3 × 10⁶ K · flare loops 10–30 × 10⁶ K", src: "model", ex: "10⁶ K" },
+  { g: "Sun", sym: "u_B", name: "Magnetic energy density", plain: "Energy stored in each cubic metre of field (equal to the magnetic pressure).", f: "u_B = B² / (2μ₀)", unit: "J/m³", typ: "1–1,000 J/m³ in active regions", src: "model", ex: "(0.01)² / (2 × 1.2566 × 10⁻⁶) = 39.8 J/m³" },
+  { g: "Sun", sym: "E", name: "Stored magnetic energy", plain: "The whole energy budget available to a flare/CME. Only 10–30% is 'free' to release.", f: "E ≈ B² L³ / (2μ₀)", unit: "J or erg", typ: "10²⁹–10³³ erg", src: "model", ex: "39.8 × (3 × 10⁷)³ = 1.07 × 10²⁴ J = 1.07 × 10³¹ erg (≈ M-class)" },
+  { g: "Sun", sym: "β", name: "Plasma beta", plain: "Gas pressure divided by magnetic pressure. Below 1, the field is in charge.", f: "β = 2 n k_B T / (B² / 2μ₀)", unit: "none", typ: "Corona 10⁻³–10⁻² · solar wind ≈ 1", src: "model", ex: "2 × 10¹⁵ × 1.38 × 10⁻²³ × 10⁶ / 39.8 = 6.9 × 10⁻⁴" },
+  { g: "Reconnection", sym: "vA", name: "Alfvén speed", plain: "The speed of magnetic waves. The speed limit for reconnection jets, and so for energy release.", f: "vA = B / √(μ₀ ρ)", unit: "km/s", typ: "Corona 500–10,000 km/s", src: "model", ex: "0.01 / √(1.2566 × 10⁻⁶ × 1.67 × 10⁻¹²) = 6,898 km/s" },
+  { g: "Reconnection", sym: "η", name: "Magnetic diffusivity", plain: "How easily field lines slip through the plasma. Tiny in the corona.", f: "η ≈ 10⁹ · T^(−3/2) (Spitzer)", unit: "m²/s", typ: "≈ 1 m²/s at 10⁶ K", src: "model", ex: "10⁹ × (10⁶)^(−1.5) = 1 m²/s" },
+  { g: "Reconnection", sym: "S", name: "Lundquist number", plain: "How 'perfect' the plasma is. A huge S means classical reconnection is hopelessly slow.", f: "S = L · vA / η", unit: "none", typ: "10¹²–10¹⁴+", src: "model", ex: "3 × 10⁷ × 6.9 × 10⁶ / 1 = 2.1 × 10¹⁴" },
+  { g: "Reconnection", sym: "M", name: "Reconnection rate", plain: "How fast field flows into the X-point, as a fraction of the Alfvén speed.", f: "M = v_in / vA · Sweet–Parker S^(−½) · Petschek π/(8 ln S) · plasmoid ≈ 0.01", unit: "none", typ: "Observed 0.01–0.1", src: "model", ex: "Sweet–Parker 7 × 10⁻⁸ · Petschek 0.012" },
+  { g: "Reconnection", sym: "v_in, τ_rec", name: "Inflow speed & reconnection time", plain: "How fast field is fed in, and how long the whole region takes to process.", f: "v_in = M · vA ·  τ_rec = L / v_in", unit: "km/s, s", typ: "v_in 10–700 km/s · τ minutes", src: "model", ex: "M = 0.01 → v_in = 69 km/s, τ = 435 s ≈ 7 min (Sweet–Parker: 724 days)" },
+  { g: "Reconnection", sym: "P", name: "Energy release rate (power)", plain: "How much magnetic energy is released per second. This drives the flare.", f: "P ≈ (B² / μ₀) · v_in · L²", unit: "W, erg/s", typ: "10²⁷–10²⁹ erg/s", src: "model", ex: "79.6 × 6.9 × 10⁴ × 9 × 10¹⁴ = 4.9 × 10²¹ W = 4.9 × 10²⁸ erg/s (empties the store in ~3.6 min)" },
+  { g: "Reconnection", sym: "E_rec, dΦ/dt", name: "Reconnection electric field & flux rate", plain: "The observed way to measure reconnection: how fast flare ribbons sweep over magnetic flux.", f: "E_rec = v_ribbon · B_n ·  dΦ/dt = B_n · v_ribbon · ℓ", unit: "V/m, Mx/s", typ: "0.1–10 kV/m · 10¹⁷–10¹⁹ Mx/s", src: "model", ex: "20 km/s × 500 G, ℓ = 20 Mm → 1 kV/m, 2 × 10¹⁸ Mx/s" },
+  { g: "Flare", sym: "F_SXR", name: "Soft X-ray flux (GOES)", plain: "X-ray power from hot flare loops reaching Earth. Defines the flare class.", f: "Class = letter + F / base (A 10⁻⁸, B 10⁻⁷, C 10⁻⁶, M 10⁻⁵, X 10⁻⁴)", unit: "W/m²", typ: "10⁻⁸ (quiet) to 10⁻³ (X10+)", src: "live", ex: "3.13 × 10⁻⁶ → C3.1 (26 Sep 2026)" },
+  { g: "Flare", sym: "dF_SXR/dt", name: "Neupert proxy", plain: "The slope of the X-ray curve, which tracks when reconnection is releasing energy.", f: "P(t) ∝ F_HXR(t) ∝ dF_SXR/dt", unit: "W/m²/s", typ: "10⁻¹⁰–10⁻⁶", src: "live", ex: "Derived from GOES: 5-min smoothing → slope → keep positive part" },
+  { g: "Flare", sym: "τ_cool", name: "Loop cooling time", plain: "How fast heated flare loops cool, which sets the decay of the X-ray curve.", f: "dF/dt = k · P(t) − F / τ_cool", unit: "min", typ: "5–30 min", src: "model", ex: "12 min in the event simulator" },
+  { g: "CME", sym: "a_CME", name: "CME acceleration", plain: "The push on the CME while reconnection runs. It peaks with the X-ray rise.", f: "a ≈ κ · P(t);  v = v₀ + ∫a dt;  h = ∫v dt", unit: "km/s²", typ: "0.1–5 km/s², for 5–60 min", src: "model", ex: "Peak 1.2 km/s² → ~1,000 km/s final speed" },
+  { g: "CME", sym: "v₀, lat, lon, half-angle", name: "CME speed & geometry", plain: "How fast the CME leaves, which direction it goes, and how wide it is.", f: "From coronagraph fits (DONKI)", unit: "km/s, degrees", typ: "300–3,000 km/s", src: "cat", ex: "88 CMEs in 30 days; fastest 1,586 km/s" },
+  { g: "CME", sym: "w", name: "Solar wind speed", plain: "Speed of the background wind the CME ploughs through.", f: "median of RTSW proton_speed (24 h)", unit: "km/s", typ: "Slow 300–450 · fast 500–800", src: "live", ex: "344 km/s (27–28 Sep 2026)" },
+  { g: "CME", sym: "γ", name: "Drag parameter", plain: "How strongly the wind drags on the CME. Light, wide CMEs in dense wind feel more drag.", f: "γ = c_d · A · ρ_w / (M_CME + M_virtual)", unit: "km⁻¹", typ: "0.1–2 × 10⁻⁷ km⁻¹", src: "model", ex: "Default 0.2 × 10⁻⁷ km⁻¹" },
+  { g: "CME", sym: "DBM", name: "Drag-based model", plain: "Predicts CME speed and distance over time, and so its arrival at Earth.", f: "dv/dt = −γ (v−w)|v−w| → v(t) = Δ/(1+sγΔt) + w,  r(t) = (s/γ) ln(1+sγΔt) + wt + r₀", unit: "h, km/s", typ: "Arrival 1–4 days", src: "model", ex: "v₀ = 1,038, w = 344, γ = 0.2 × 10⁻⁷ → 55.8 h, impact 527 km/s" },
+  { g: "Earth", sym: "Bx, By, Bz, Bt", name: "IMF components (GSM)", plain: "The solar wind's magnetic field. Bz < 0 (south) can reconnect with Earth's field.", f: "Measured at L1", unit: "nT", typ: "Quiet Bt 2–10 · CME 20–50+", src: "live", ex: "By = 2.8, Bz = −1.11 nT" },
+  { g: "Earth", sym: "B_T, θ", name: "Transverse field & clock angle", plain: "The part of the field that can reconnect, and which way it points.", f: "B_T = √(By² + Bz²) · θ = atan2(By, Bz)", unit: "nT, degrees", typ: "θ: 0° north … 180° south", src: "live", ex: "B_T = 3.01 nT, θ = 111.6°" },
+  { g: "Earth", sym: "dΦ/dt", name: "Newell coupling", plain: "Earth's dayside reconnection rate: how fast solar wind energy is let in.", f: "v^(4/3) · B_T^(2/3) · sin^(8/3)(θ/2)", unit: "arbitrary", typ: "Quiet ~10³ · storm ~10⁴+", src: "live", ex: "2,410 × 2.085 × 0.603 = 3,031" },
+  { g: "Earth", sym: "E_y", name: "Solar wind electric field", plain: "Speed × southward field: the voltage driving energy into the magnetosphere.", f: "E_y = v · Bs (Bs = −Bz if Bz < 0)", unit: "mV/m", typ: "0–1 quiet · 5–20 storm", src: "live", ex: "344 × 1.11 × 10⁻³ = 0.38 mV/m" },
+  { g: "Earth", sym: "P_dyn", name: "Dynamic pressure", plain: "How hard the solar wind pushes on Earth's shield.", f: "P_dyn = m_p · n · v²", unit: "nPa", typ: "1–3 quiet · 10–50 in CMEs", src: "live", ex: "1.67 × 10⁻²⁷ × 2.02 × 10⁶ × (3.44 × 10⁵)² = 0.40 nPa" },
+  { g: "Earth", sym: "r_mp", name: "Magnetopause distance", plain: "How far out Earth's shield reaches on the Sun side.", f: "[10.22 + 1.29 tanh(0.184 (Bz + 8.14))] · P_dyn^(−1/6.6)", unit: "Earth radii", typ: "≈ 10 R_E; < 6.6 R_E in extreme storms", src: "model", ex: "Bz = −1.11, P = 0.40 → 13.0 R_E" },
+  { g: "Earth", sym: "Dst", name: "Storm index (Burton model)", plain: "Storm strength: more negative is stronger.", f: "dDst/dt = Q − Dst/τ;  Q = −4.4 (E_y − 0.5) if E_y > 0.5;  τ ≈ 7.7 h", unit: "nT", typ: "> −30 quiet · < −50 moderate · < −100 intense", src: "model", ex: "E_y = 0.38 < 0.5 → Q = 0 (quiet)" },
+  { g: "Constants", sym: "μ₀, m_p, k_B", name: "Physical constants", plain: "Fixed numbers of nature used in the formulas.", f: "μ₀ = 4π × 10⁻⁷ H/m · m_p = 1.6726 × 10⁻²⁷ kg · k_B = 1.3806 × 10⁻²³ J/K", unit: "—", typ: "—", src: "const", ex: "—" },
+  { g: "Constants", sym: "R☉, AU, R_E", name: "Distances", plain: "Solar radius, Sun–Earth distance and Earth radius.", f: "R☉ = 695,700 km · 1 AU = 1.496 × 10⁸ km · R_E = 6,371 km", unit: "km", typ: "—", src: "const", ex: "The DBM starts at 20 R☉ = 1.39 × 10⁷ km" },
+];
+let varGroup = "All";
+function renderVars() {
+  const q = $("varSearch").value.trim().toLowerCase();
+  const groups = ["All", ...new Set(VARS.map((v) => v.g))];
+  $("varChips").innerHTML = groups.map((g) => `<button class="chip ${g === varGroup ? "on" : ""}" data-g="${g}" type="button">${g}</button>`).join("");
+  $("varChips").querySelectorAll(".chip").forEach((b) => b.onclick = () => { varGroup = b.dataset.g; renderVars(); });
+  const list = VARS.filter((v) => (varGroup === "All" || v.g === varGroup) && (!q || JSON.stringify(v).toLowerCase().includes(q)));
+  $("varCards").innerHTML = list.map((v) => `
+    <div class="card"><h3><span class="mono">${v.sym}</span> · ${v.name}</h3>
+      <div class="meta">${badge(v.src)} <span class="badge const">${v.g}</span></div>
+      <p>${v.plain}</p>
+      <div class="formula" style="font-size:0.95rem">${v.f}</div>
+      <dl><dt>Unit</dt><dd>${v.unit}</dd><dt>Typical values</dt><dd>${v.typ}</dd><dt>Worked example</dt><dd>${v.ex}</dd></dl>
+    </div>`).join("") || "<p>No match.</p>";
+}
+
+/* =================================================================== page 11: future */
+const FUT = [
+  { cat: "ML", lvl: "Intermediate", t: "Flare forecasting (≥ M-class in the next 24 h)", q: "Will this active region produce an M or X flare tomorrow?", why: "Radio blackouts arrive 8 minutes after a flare, too fast to react, so warnings must come in advance.", data: "SDO/HMI SHARP magnetic parameters, GOES flare lists (2010→), NOAA region reports", out: "Probability per region per day", how: "Gradient boosting, LSTM on parameter time series; handle heavy class imbalance (~2% positives)", metric: "True Skill Statistic (TSS), Brier skill score vs climatology and NOAA's forecast", step: "③ Detect" },
+  { cat: "ML", lvl: "Beginner", t: "Flare peak nowcast from the early rise", q: "Given the first 5–10 minutes of a flare, how big will it get and when will it peak?", why: "A flare's final class decides the blackout level. Knowing it minutes early buys time for operators.", data: "GOES 1-min X-ray archive + flare list (thousands of events)", out: "Predicted peak class and time, with uncertainty", how: "Quantile regression or small 1D-CNN on the rising segment; physics feature: early Neupert slope", metric: "MAE of log peak flux; peak-time error (min)", step: "④ Reveal reconnection" },
+  { cat: "ML", lvl: "Advanced", t: "Hidden reconnection-rate inversion", q: "Can we recover M(t) and total reconnected flux from the GOES curve alone?", why: "Reconnection flux is normally measured from imaging. Getting it from a single X-ray sensor would make it available in real time.", data: "GOES curves paired with RibbonDB reconnection flux (3,000+ flares), STIX hard X-rays", out: "M(t), dΦ/dt(t), total flux Φ", how: "Physics-informed neural network constrained by dF/dt = kP − F/τ; or simulation-based inference", metric: "Correlation with ribbon flux; timing of peak reconnection", step: "④ Reveal reconnection" },
+  { cat: "ML", lvl: "Intermediate", t: "Eruptive vs confined flare classifier", q: "Will this flare launch a CME?", why: "Only CMEs cause geomagnetic storms. Many big flares are 'confined' and harmless to Earth.", data: "DONKI linked FLR↔CME events, GOES curve features, SHARP parameters", out: "P(CME | flare)", how: "Tabular classifier; features: duration, rise time, peak, Neupert integral, region magnetic properties", metric: "TSS, F1, calibration", step: "⑤ Link flare → CME" },
+  { cat: "ML", lvl: "Intermediate", t: "Hybrid CME arrival-time model", q: "Can ML correct the drag-based model's arrival errors?", why: "Operational arrival errors are still around ±10 h, which is hard to plan a power grid around.", data: "DONKI CMEs + observed ICME arrivals (Richardson & Cane, CME Scoreboard), solar wind at launch", out: "Arrival time and speed with a confidence interval", how: "Learn γ and w per event (or a residual on DBM) with gradient boosting / Bayesian regression", metric: "Mean absolute error (h) vs DBM and Scoreboard models", step: "⑥ Send across space" },
+  { cat: "ML", lvl: "Advanced", t: "Southward-Bz forecasting", q: "When a CME arrives, will its field point south, and for how long?", why: "Bz decides the storm, and it's currently unknown until the CME reaches L1, about 30–60 min before impact.", data: "L1 data inside past ICMEs, source-region magnetic helicity and orientation, flux-rope fits", out: "Bz(t) profile over the next hours", how: "Sequence models on the first hours of the ICME; flux-rope-model priors", metric: "RMSE of Bz; hit rate for Bz < −10 nT intervals", step: "⑦ Coupling at Earth" },
+  { cat: "ML", lvl: "Intermediate", t: "Storm index forecast (Dst / Kp)", q: "What will Dst and Kp be over the next 1–6 hours?", why: "Grid operators and satellite teams act on Kp/Dst thresholds.", data: "OMNIWeb 1-min solar wind (1995→), Kyoto Dst, GFZ Kp", out: "Dst(t+1…6h), Kp(t+3h)", how: "LSTM / temporal fusion transformer with Newell coupling as an input feature; Burton model as baseline", metric: "RMSE; storm onset timing; skill vs Burton / O'Brien–McPherron", step: "⑦ Coupling at Earth" },
+  { cat: "Data science", lvl: "Beginner", t: "Live anomaly & shock detection", q: "Did an interplanetary shock or CME just arrive at L1?", why: "A sudden jump in speed, density and field marks the start of an event, and early detection starts the clock.", data: "RTSW 1-min stream; DONKI IPS (shock) catalogue as labels", out: "Event flags with timestamps", how: "Change-point detection (CUSUM, Bayesian online), isolation forest on rolling features", metric: "Precision / recall vs IPS catalogue; detection delay", step: "② Clean / ⑦ Coupling" },
+  { cat: "Data science", lvl: "Intermediate", t: "Flare ribbon tracking from images", q: "Can we measure ribbon motion, and so reconnection, automatically?", why: "Ribbon speed × field = the reconnection electric field, the most direct observable of reconnection.", data: "SDO/AIA 1600 Å images, HMI magnetograms, RibbonDB masks", out: "Ribbon masks per frame → dΦ/dt", how: "U-Net segmentation + optical flow", metric: "IoU vs RibbonDB masks; reconnection flux error", step: "④ Reveal reconnection" },
+  { cat: "LLM", lvl: "Beginner", t: "Space weather tutor (RAG)", q: "Can a beginner ask 'why is Bz important?' and get a correct, grounded answer that uses today's numbers?", why: "The biggest barrier to this field is jargon. A patient tutor lowers it.", data: "This guide, NOAA SWPC glossary and explainers, curated papers; live values as tool calls", out: "Answers with citations and live numbers", how: "Retrieval-augmented generation; tools that call the physics functions; refusal when unsure", metric: "Expert-graded accuracy, citation rate, beginner comprehension quiz", step: "⑧ Explain" },
+  { cat: "LLM", lvl: "Intermediate", t: "Bulletin generator", q: "Can the numeric state be turned into a clear NOAA-style bulletin?", why: "Forecasters write these by hand, and the public needs plain language.", data: "SWPC forecast discussions (public text archive) paired with the data at issue time", out: "Draft bulletin: what happened, what's coming, confidence", how: "Structured-data-to-text with templates + LLM; mandatory human review", metric: "Factual consistency checks vs data; forecaster edit distance", step: "⑧ Explain" },
+  { cat: "LLM", lvl: "Intermediate", t: "Literature-to-parameters extractor", q: "Can we pull measured reconnection rates, CME speeds and drag values out of papers into a table?", why: "Thousands of papers report numbers that are never collected in one place.", data: "arXiv astro-ph.SR full texts", out: "Structured dataset: event, quantity, value, uncertainty, paper", how: "LLM extraction with schema validation; human spot checks", metric: "Precision / recall on a hand-labelled set", step: "Model calibration (γ, M ranges)" },
+  { cat: "Agentic", lvl: "Advanced", t: "Autonomous solar monitor", q: "Can a team of agents watch the Sun 24/7, run the simulator on each event and brief a human?", why: "Events happen at 3 a.m. Agents can triage, model and draft while humans sleep.", data: "All live feeds + this simulator + event memory", out: "Event dossiers and alerts awaiting approval", how: "Orchestrator + monitor / modelling / research / reporter agents (diagram below); human-in-the-loop gate", metric: "Detection delay, false alarm rate, forecaster usefulness rating", step: "All stages ①–⑨" },
+  { cat: "Agentic", lvl: "Advanced", t: "Hypothesis-testing research agent", q: "'Do flares with faster reconnection launch faster CMEs?' Can an agent answer questions like this end-to-end?", why: "Automates the grind of data gathering and first-pass statistics, so scientists can focus on the ideas.", data: "Exported event dataset, DONKI, RibbonDB, archives", out: "Notebook + report with statistics, plots and caveats", how: "Plan → fetch → analyse → critique loop; code sandbox; mandatory limitations section", metric: "Reproducibility; expert review of conclusions", step: "⑨ Export" },
+  { cat: "Agentic", lvl: "Beginner", t: "Data-quality guardian", q: "Can an agent notice when a feed breaks, moves or drifts, and fix or flag it?", why: "While building this guide, NOAA's old solar-wind URLs turned out to be dead. Silent data failures are common.", data: "Feed health logs, endpoint directory listings, cross-checks between spacecraft", out: "Alerts and suggested config patches (opened for review)", how: "Scheduled checks + LLM reasoning over errors and directory listings", metric: "Time-to-detect outages; correct fix suggestions", step: "① Collect / ② Clean" },
+];
+let futCat = "All";
+function renderFuture() {
+  const cats = ["All", ...new Set(FUT.map((f) => f.cat))];
+  $("futChips").innerHTML = cats.map((g) => `<button class="chip ${g === futCat ? "on" : ""}" data-g="${g}" type="button">${g}${g === "All" ? "" : ` (${FUT.filter((f) => f.cat === g).length})`}</button>`).join("");
+  $("futChips").querySelectorAll(".chip").forEach((b) => b.onclick = () => { futCat = b.dataset.g; renderFuture(); });
+  $("futCards").innerHTML = FUT.map((f, i) => [f, i]).filter(([f]) => futCat === "All" || f.cat === futCat).map(([f, i]) => `
+    <div class="card"><h3>#${i + 1} · ${f.t}</h3>
+      <div class="meta"><span class="badge cat">${f.cat}</span><span class="badge const">${f.lvl}</span><span class="badge model">Builds on: ${f.step}</span></div>
+      <dl>
+        <dt>Question</dt><dd>${f.q}</dd>
+        <dt>Why it matters</dt><dd>${f.why}</dd>
+        <dt>Data</dt><dd>${f.data}</dd>
+        <dt>Output</dt><dd>${f.out}</dd>
+        <dt>Approach ideas</dt><dd>${f.how}</dd>
+        <dt>Success measure</dt><dd>${f.metric}</dd>
+      </dl></div>`).join("");
+}
+
+/* =================================================================== routing & lifecycle */
+const rendered = new Set();
+let dataReady = false;
+const RENDER = {
+  start: () => renderTiles(),
+  engine: () => renderEngine(),
+  reconnection: () => renderRates(),
+  flare: () => { renderGoes(); renderEvent(); },
+  cme: () => { renderCmeHist(); renderDbm(); },
+  earth: () => { renderEarth(); renderNewell(); },
+  flow: () => renderStory(),
+  variables: () => renderVars(),
+  future: () => renderFuture(),
+};
+const NEEDS_DATA = new Set(["start", "flare", "cme", "earth", "flow"]);
+function show() {
+  const id = (location.hash || "#start").slice(1);
+  const page = $(id) && $(id).classList.contains("page") ? id : "start";
+  document.querySelectorAll(".page").forEach((p) => p.classList.toggle("active", p.id === page));
+  document.querySelectorAll("nav.side a").forEach((a) => a.classList.toggle("active", a.getAttribute("href") === "#" + page));
+  window.scrollTo(0, 0);
+  xpState.running = page === "reconnection";
+  if (xpState.running) { xpState.last = 0; requestAnimationFrame(xpointFrame); }
+  if (RENDER[page] && (!NEEDS_DATA.has(page) || dataReady)) {
+    if (page === "reconnection" || !rendered.has(page)) { RENDER[page](); rendered.add(page); }
+    else document.querySelectorAll(`#${page} .chart`).forEach((el) => el.data && Plotly.Plots.resize(el));
+  }
+}
+function rerenderAll() {
+  const current = (location.hash || "#start").slice(1);
+  rendered.clear();
+  if (RENDER[current] && (!NEEDS_DATA.has(current) || dataReady)) { RENDER[current](); rendered.add(current); }
+}
+window.addEventListener("hashchange", show);
+
+/* theme toggle */
+$("themeBtn").onclick = () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem("rc-theme", root.dataset.theme); } catch (e) {}
+  rerenderAll();
+};
+try { const t = localStorage.getItem("rc-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerenderAll);
+
+/* controls */
+["bIn", "lIn", "nIn", "tIn"].forEach((id) => $(id).addEventListener("input", () => { renderEngine(); rendered.add("engine"); }));
+$("mIn").addEventListener("input", setMLabel); setMLabel();
+["evM", "evW", "evT"].forEach((id) => $(id).addEventListener("input", renderEvent));
+["v0In", "wIn", "gIn"].forEach((id) => $(id).addEventListener("input", () => { if (id === "v0In") $("cmePick").value = ""; renderDbm(); }));
+["bzIn", "byIn", "vIn", "dnIn"].forEach((id) => $(id).addEventListener("input", renderEarth));
+$("earthLive").onclick = loadLiveEarth;
+$("varSearch").addEventListener("input", renderVars);
+
+show();
+loadData().then(() => {
+  dataReady = true;
+  initDbm();
+  const i = DATA.sw.length - 1;
+  $("bzIn").value = DATA.swBz[i]; $("byIn").value = DATA.swBy[i]; $("vIn").value = Math.round(DATA.swV[i]); $("dnIn").value = Math.max(0.5, Math.round(DATA.swN[i] * 2) / 2);
+  show();
+}).catch((e) => { $("dataStatus").textContent = "Data failed to load: " + e.message; });
+</script>
+</body>
+</html>

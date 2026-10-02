@@ -1,0 +1,26 @@
+{
+  "title": "Big storm: X flare, Earth-directed CME, strong Bz",
+  "description": "A growing region fires an X2.4 flare and a fast halo CME that hits Earth about a day later. About 5 minutes of wall time.",
+  "tasks": [
+    "Which region produced the flare, and how strong was it?",
+    "Is the CME coming toward Earth? When will it arrive?",
+    "Right now, is Earth being driven hard? How can you tell?"
+  ],
+  "speed": 20,
+  "events": [
+    { "at": 0, "type": "note", "text": "Region 9001 is growing near disk centre" },
+    { "at": 0, "type": "region", "regionNo": 9001, "location": "N14W08", "areaMsh": 820, "magClass": "BGD", "spotCount": 34, "pM": 65, "pX": 30 },
+    { "at": 3, "type": "note", "text": "X-class flare begins in 9001" },
+    { "at": 3, "type": "flare", "id": "f1", "regionNo": 9001, "peakClass": "X2.4", "riseMin": 14, "decayMin": 45 },
+    { "at": 15, "type": "cme", "id": "c1", "flareId": "f1", "speed": 1900, "lat": 12, "lon": -4, "halfAngle": 70,
+      "arrival": { "bzMin": -24, "peakDensity": 30, "durationHours": 14 } },
+    { "at": 40, "type": "note", "text": "Fast-forward through the CME's trip to Earth" },
+    { "at": 40, "type": "speed", "value": 1200 },
+    { "at": 0, "type": "speed", "value": 30, "arrivalOf": "c1", "offsetMin": -20 },
+    { "at": 0, "type": "note", "text": "CME shock reaching L1", "arrivalOf": "c1", "offsetMin": 0 },
+    { "at": 0, "type": "speed", "value": 120, "arrivalOf": "c1", "offsetMin": 15 },
+    { "at": 0, "type": "speed", "value": 600, "arrivalOf": "c1", "offsetMin": 240 },
+    { "at": 0, "type": "note", "text": "Storm winding down", "arrivalOf": "c1", "offsetMin": 840 },
+    { "at": 0, "type": "speed", "value": 60, "arrivalOf": "c1", "offsetMin": 900 }
+  ]
+}

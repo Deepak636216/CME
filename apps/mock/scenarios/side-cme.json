@@ -1,0 +1,12 @@
+{
+  "title": "Limb flare, CME going sideways",
+  "description": "An M6 flare on the west limb launches a CME that misses Earth. No CME alert should fire. About 2 minutes.",
+  "tasks": ["Where on the Sun did it happen?", "Will the CME hit Earth?"],
+  "speed": 20,
+  "events": [
+    { "at": 0, "type": "region", "regionNo": 9020, "location": "N10W74", "areaMsh": 450, "magClass": "BG", "spotCount": 18, "pM": 50, "pX": 10 },
+    { "at": 2, "type": "flare", "id": "f1", "regionNo": 9020, "peakClass": "M6.2", "riseMin": 10, "decayMin": 30 },
+    { "at": 12, "type": "cme", "id": "c1", "flareId": "f1", "speed": 1300, "lat": 8, "lon": 82, "halfAngle": 35 },
+    { "at": 40, "type": "speed", "value": 600 }
+  ]
+}

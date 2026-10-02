@@ -1,0 +1,20 @@
+{
+  "name": "@cme/mock",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Mock backend: serves the /api/v1 contract from saved NOAA/NASA data plus scripted scenarios",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "dependencies": {
+    "@cme/physics": "*",
+    "@cme/shared": "*",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.2"
+  }
+}

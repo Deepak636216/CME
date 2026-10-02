@@ -1,0 +1,24 @@
+{
+  "title": "Busy Sun",
+  "description": "Five regions, a run of C and M flares and two CMEs (one weak hit, one miss). Tests how crowded the UI gets. About 5 minutes.",
+  "tasks": ["Which region is most active?", "How many CMEs are there, and which one matters for Earth?"],
+  "speed": 60,
+  "events": [
+    { "at": 0, "type": "region", "regionNo": 9031, "location": "N22E35", "areaMsh": 540, "magClass": "BGD", "spotCount": 28, "pM": 55, "pX": 15 },
+    { "at": 0, "type": "region", "regionNo": 9032, "location": "S12E10", "areaMsh": 260, "magClass": "BG", "spotCount": 14, "pM": 30, "pX": 5 },
+    { "at": 0, "type": "region", "regionNo": 9033, "location": "N05W20", "areaMsh": 120, "magClass": "B", "spotCount": 6, "pM": 10, "pX": 1 },
+    { "at": 0, "type": "region", "regionNo": 9034, "location": "S25W48", "areaMsh": 380, "magClass": "BG", "spotCount": 19, "pM": 35, "pX": 5 },
+    { "at": 0, "type": "region", "regionNo": 9035, "location": "N15W70", "areaMsh": 90, "magClass": "A", "spotCount": 3, "pM": 5, "pX": 1 },
+    { "at": 10, "type": "flare", "id": "f1", "regionNo": 9031, "peakClass": "C4.2", "riseMin": 6, "decayMin": 15 },
+    { "at": 40, "type": "flare", "id": "f2", "regionNo": 9034, "peakClass": "M1.4", "riseMin": 8, "decayMin": 20 },
+    { "at": 52, "type": "cme", "id": "c1", "flareId": "f2", "speed": 900, "lat": -20, "lon": 55, "halfAngle": 30 },
+    { "at": 90, "type": "flare", "id": "f3", "regionNo": 9032, "peakClass": "C8.0", "riseMin": 7, "decayMin": 18 },
+    { "at": 130, "type": "flare", "id": "f4", "regionNo": 9031, "peakClass": "M2.7", "riseMin": 10, "decayMin": 30 },
+    { "at": 142, "type": "cme", "id": "c2", "flareId": "f4", "speed": 750, "lat": 18, "lon": -25, "halfAngle": 45,
+      "arrival": { "bzMin": -13, "peakDensity": 15, "durationHours": 10 } },
+    { "at": 200, "type": "flare", "id": "f5", "regionNo": 9033, "peakClass": "C1.9", "riseMin": 5, "decayMin": 12 },
+    { "at": 230, "type": "speed", "value": 1200 },
+    { "at": 0, "type": "speed", "value": 120, "arrivalOf": "c2", "offsetMin": -15 },
+    { "at": 0, "type": "speed", "value": 600, "arrivalOf": "c2", "offsetMin": 120 }
+  ]
+}

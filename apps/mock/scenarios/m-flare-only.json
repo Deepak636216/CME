@@ -1,0 +1,11 @@
+{
+  "title": "M flare, no CME",
+  "description": "An M3 flare with no CME. Tests that the UI does not make every flare look like a storm. About 2 minutes.",
+  "tasks": ["How strong was the flare?", "Is anything heading to Earth?"],
+  "speed": 20,
+  "events": [
+    { "at": 0, "type": "region", "regionNo": 9010, "location": "S18E22", "areaMsh": 310, "magClass": "BG", "spotCount": 12, "pM": 35, "pX": 5 },
+    { "at": 2, "type": "flare", "id": "f1", "regionNo": 9010, "peakClass": "M3.1", "riseMin": 8, "decayMin": 25 },
+    { "at": 45, "type": "speed", "value": 60 }
+  ]
+}

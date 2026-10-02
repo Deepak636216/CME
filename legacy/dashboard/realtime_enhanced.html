@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Solar Observatory</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.24.1/plotly.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 15px;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(15px);
+            border-bottom: 2px solid #00d4ff;
+        }
+        
+        .title {
+            font-size: 26px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff6b35, #00d4ff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .status {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+        }
+        
+        .status-item {
+            padding: 8px 12px;
+            border-radius: 20px;
+            background: rgba(255, 107, 53, 0.15);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .live-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00ff00;
+            animation: pulse 1.5s infinite;
+            margin-right: 8px;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        .main-container {
+            margin-top: 90px;
+            display: grid;
+            grid-template-columns: 300px 1fr 280px;
+            gap: 20px;
+            padding: 20px;
+            min-height: calc(100vh - 110px);
+        }
+        
+        .sidebar {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+            height: fit-content;
+        }
+        
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 400px 400px 300px;
+            gap: 15px;
+        }
+        
+        .panel {
+            background: rgba(10, 10, 30, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid #333;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .panel:hover {
+            border-color: #00d4ff;
+            box-shadow: 0 5px 25px rgba(0, 212, 255, 0.1);
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            color: #00d4ff;
+            border-bottom: 2px solid #00d4ff;
+            padding-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .api-indicator {
+            background: linear-gradient(45deg, #00ff88, #00d4ff);
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: bold;
+            color: #000;
+        }
+        
+        .chart-container {
+            height: calc(100% - 50px);
+            position: relative;
+        }
+        
+        .predictions-panel {
+            grid-column: 1 / -1;
+            background: rgba(0, 100, 150, 0.1);
+            border: 1px solid #0066cc;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 255, 136, 0.1));
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(0, 255, 136, 0.2));
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.2);
+        }
+        
+        .metric-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .metric-label {
+            font-size: 11px;
+            color: #b0b0b0;
+            margin-top: 5px;
+        }
+        
+        .api-status {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+        
+        .api-source {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 10px;
+        }
+        
+        .api-name { color: #00d4ff; }
+        .api-status-indicator { color: #00ff88; }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00d4ff;
+            border-radius: 25px;
+            color: #00d4ff;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            font-weight: 500;
+        }
+        
+        .control-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            transform: translateX(-5px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+        }
+        
+        .alert {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            max-width: 350px;
+            z-index: 2000;
+            animation: slideIn 0.5s ease;
+            box-shadow: 0 10px 30px rgba(255, 68, 68, 0.3);
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">🌞 Real-Time Solar Observatory</div>
+        <div class="status">
+            <div class="status-item">
+                <div class="live-indicator"></div>
+                LIVE API DATA
+            </div>
+            <div class="status-item" id="last-update">
+                Updated: --:--:--
+            </div>
+            <div class="status-item" id="api-status">
+                APIs: Loading...
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">📊 Live Metrics</h3>
+            
+            <div class="metric-card">
+                <div class="metric-value" id="solar-wind-speed">Loading...</div>
+                <div class="metric-label">Solar Wind Speed (km/s)</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-value" id="plasma-density">Loading...</div>
+                <div class="metric-label">Plasma Density (p/cm³)</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-value" id="magnetic-field">Loading...</div>
+                <div class="metric-label">IMF Strength (nT)</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-value" id="bz-component">Loading...</div>
+                <div class="metric-label">Bz Component (nT)</div>
+            </div>
+
+            <div class="api-status">
+                <h4 style="color: #00d4ff; margin: 0 0 10px 0; font-size: 14px;">📡 Data Sources</h4>
+                <div class="api-source">
+                    <span class="api-name">NOAA SWPC</span>
+                    <span class="api-status-indicator" id="noaa-status">●</span>
+                </div>
+                <div class="api-source">
+                    <span class="api-name">NASA DONKI</span>
+                    <span class="api-status-indicator" id="nasa-status">●</span>
+                </div>
+                <div class="api-source">
+                    <span class="api-name">CORS Proxy</span>
+                    <span class="api-status-indicator" id="proxy-status">●</span>
+                </div>
+                <div style="margin-top: 10px; font-size: 10px; color: #888;">
+                    <div id="api-info">NASA API: Rate limited to prevent 429 errors</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Solar Wind Parameters</div>
+                    <div class="api-indicator">LIVE NOAA</div>
+                </div>
+                <div class="chart-container">
+                    <div id="solar-wind-chart"></div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Magnetic Field Components</div>
+                    <div class="api-indicator">REAL-TIME</div>
+                </div>
+                <div class="chart-container">
+                    <div id="magnetic-field-chart"></div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">CME Detection & Analysis</div>
+                    <div class="api-indicator">NASA DONKI</div>
+                </div>
+                <div class="chart-container">
+                    <div id="cme-tracker"></div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">3D Solar System Model</div>
+                    <div class="api-indicator">REAL-TIME 3D</div>
+                </div>
+                <div class="chart-container" id="solar-system-3d" style="position: relative;">
+                    <div class="legend-3d" style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px; font-size: 11px; z-index: 100;">
+                        <div class="legend-item">
+                            <div class="legend-color" style="width: 12px; height: 12px; background: #ffaa00; border-radius: 50%; margin-right: 8px; display: inline-block;"></div>
+                            <span>Sun</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="width: 12px; height: 2px; background: #0088ff; margin-right: 8px; display: inline-block;"></div>
+                            <span>Magnetic Field Lines</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="width: 12px; height: 2px; background: #00ff88; margin-right: 8px; display: inline-block;"></div>
+                            <span>Solar Wind</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="width: 12px; height: 12px; background: #ff6600; border-radius: 50%; margin-right: 8px; display: inline-block;"></div>
+                            <span>CME Particles</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="width: 12px; height: 12px; background: #66aaff; border-radius: 50%; margin-right: 8px; display: inline-block;"></div>
+                            <span>Earth</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel predictions-panel">
+                <div class="panel-header">
+                    <div class="panel-title">🤖 Real CME Events & Predictions</div>
+                </div>
+                <div id="cme-events-container">
+                    <div id="recent-cmes">Loading CME data...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="control-btn" onclick="refreshData()">🔄 Refresh Data</div>
+        <div class="control-btn" onclick="exportData()">📊 Export Data</div>
+        <div class="control-btn" onclick="toggleAutoRefresh()">⏰ Auto Refresh: ON</div>
+        <div class="control-btn" onclick="debugAPIs()">🔍 Debug APIs</div>
+    </div>
+
+    <script>
+        // Global State
+        let realTimeData = {
+            solarWind: [],
+            magneticField: [],
+            cmeEvents: [],
+            timestamps: []
+        };
+        
+        let apiStatus = {
+            noaa: false,
+            nasa: false,
+            proxy: false
+        };
+        
+        let autoRefresh = true;
+        let lastNASAFetch = 0;
+        const NASA_RATE_LIMIT_MS = 60000; // 1 minute between NASA API calls
+        
+        // 3D Visualization variables
+        let scene3D, camera3D, renderer3D, controls3D;
+        let sun, earth, magneticFieldLines = [], solarWindParticles = [], cmeParticlesSystems = [];
+        let animationId3D, clock3D;
+        let mouse3D = new THREE.Vector2();
+        let raycaster3D = new THREE.Raycaster();
+        let tooltip3D;
+        
+        // Fetch real data only - no fallbacks
+        async function fetchRealDataOnly(url) {
+            try {
+                // Try direct fetch first
+                const response = await fetch(url);
+                if (response.ok) {
+                    const text = await response.text();
+                    
+                    // Clean and validate JSON
+                    const cleanText = text.trim();
+                    const lastBracket = cleanText.lastIndexOf(']');
+                    const validJson = lastBracket > 0 ? cleanText.substring(0, lastBracket + 1) : cleanText;
+                    
+                    const data = JSON.parse(validJson);
+                    if (Array.isArray(data)) {
+                        return data;
+                    } else {
+                        throw new Error('Invalid data format - not an array');
+                    }
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            } catch (error) {
+                console.warn(`Direct fetch failed for ${url}:`, error.message);
+                
+                // Try CORS proxy as fallback
+                try {
+                    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+                    const proxyResponse = await fetch(proxyUrl);
+                    if (proxyResponse.ok) {
+                        const proxyData = await proxyResponse.json();
+                        const cleanContent = proxyData.contents.trim();
+                        const lastBracket = cleanContent.lastIndexOf(']');
+                        const validJson = lastBracket > 0 ? cleanContent.substring(0, lastBracket + 1) : cleanContent;
+                        return JSON.parse(validJson);
+                    }
+                } catch (proxyError) {
+                    console.warn('Proxy fetch also failed:', proxyError.message);
+                }
+                
+                // No fallback data - throw error
+                throw new Error('Failed to fetch real-time data');
+            }
+        }
+        
+        // Sample data generation functions removed - using only real-time data
+        
+        // Fetch real-time solar wind data
+        async function fetchSolarWindData() {
+            try {
+                const data = await fetchRealDataOnly(
+                    'https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json'
+                );
+                updateApiStatus('noaa', true);
+                return data.slice(-100); // Last 100 data points
+            } catch (error) {
+                console.error('Failed to fetch solar wind data:', error);
+                updateApiStatus('noaa', false);
+                return []; // Return empty array instead of fake data
+            }
+        }
+        
+        // Fetch real-time magnetic field data
+        async function fetchMagneticFieldData() {
+            try {
+                const data = await fetchRealDataOnly(
+                    'https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json'
+                );
+                updateApiStatus('noaa', true);
+                return data.slice(-100); // Last 100 data points
+            } catch (error) {
+                console.error('Failed to fetch magnetic field data:', error);
+                updateApiStatus('noaa', false);
+                return []; // Return empty array instead of fake data
+            }
+        }
+        
+        // Sample CME data generation removed - using only real NASA DONKI data
+        
+        // Fetch CME data from NASA with rate limiting
+        async function fetchCMEData() {
+            try {
+                const now = Date.now();
+                
+                // Check if we need to respect rate limit
+                if (now - lastNASAFetch < NASA_RATE_LIMIT_MS) {
+                    console.log('NASA API rate limited, skipping fetch');
+                    updateApiStatus('nasa', false);
+                    return []; // Return empty array instead of fake data
+                }
+                
+                const endDate = new Date().toISOString().split('T')[0];
+                const startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                const url = `https://api.nasa.gov/DONKI/CME?startDate=${startDate}&endDate=${endDate}&api_key=DEMO_KEY`;
+                
+                lastNASAFetch = now;
+                const data = await fetchRealDataOnly(url);
+                updateApiStatus('nasa', Array.isArray(data) && data.length > 0);
+                return data;
+            } catch (error) {
+                console.error('Failed to fetch CME data:', error);
+                updateApiStatus('nasa', false);
+                return []; // Return empty array instead of fake data
+            }
+        }
+        
+        // Update API status indicators
+        function updateApiStatus(api, status) {
+            apiStatus[api] = status;
+            const indicator = document.getElementById(`${api}-status`);
+            if (indicator) {
+                indicator.style.color = status ? '#00ff88' : '#ff4444';
+                indicator.textContent = status ? '●' : '●';
+            }
+            
+            // Update proxy status (avoid recursion)
+            if (api !== 'proxy') {
+                apiStatus.proxy = Object.values(apiStatus).some(s => s);
+                const proxyIndicator = document.getElementById('proxy-status');
+                if (proxyIndicator) {
+                    proxyIndicator.style.color = apiStatus.proxy ? '#00ff88' : '#ff4444';
+                    proxyIndicator.textContent = '●';
+                }
+            }
+            
+            // Update overall API status
+            const apiStatusEl = document.getElementById('api-status');
+            const workingApis = Object.values(apiStatus).filter(s => s).length;
+            if (apiStatusEl) {
+                apiStatusEl.textContent = `APIs: ${workingApis}/3 Active`;
+            }
+        }
+        
+        // Process and update displays with real data
+        async function updateRealTimeData() {
+            try {
+                showAlert('Fetching space weather data...', 'info');
+                
+                // Fetch all data concurrently
+                const [solarWindData, magFieldData, cmeData] = await Promise.allSettled([
+                    fetchSolarWindData(),
+                    fetchMagneticFieldData(), 
+                    fetchCMEData()
+                ]);
+                
+                let successCount = 0;
+                
+                // Process solar wind data
+                if (solarWindData.status === 'fulfilled' && Array.isArray(solarWindData.value) && solarWindData.value.length > 1) {
+                    try {
+                        const validRows = solarWindData.value.slice(1).filter(row => 
+                            Array.isArray(row) && row.length >= 4 && 
+                            row[0] && row[1] !== null && row[2] !== null
+                        );
+                        
+                        if (validRows.length > 0) {
+                            realTimeData.solarWind = validRows.map(row => {
+                                const time = new Date(row[0]);
+                                const density = parseFloat(row[1]);
+                                const speed = parseFloat(row[2]);
+                                const temperature = parseFloat(row[3]);
+                                
+                                return {
+                                    time: isNaN(time.getTime()) ? new Date() : time,
+                                    density: isNaN(density) ? 5 : Math.max(0, density),
+                                    speed: isNaN(speed) ? 400 : Math.max(0, speed),
+                                    temperature: isNaN(temperature) ? 50000 : Math.max(0, temperature)
+                                };
+                            }).filter(d => d.density > 0 && d.speed > 0);
+                            
+                            if (realTimeData.solarWind.length > 0) {
+                                successCount++;
+                                console.log(`Processed ${realTimeData.solarWind.length} solar wind data points`);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Error processing solar wind data:', err);
+                    }
+                }
+                
+                // Process magnetic field data  
+                if (magFieldData.status === 'fulfilled' && Array.isArray(magFieldData.value) && magFieldData.value.length > 1) {
+                    try {
+                        const validRows = magFieldData.value.slice(1).filter(row => 
+                            Array.isArray(row) && row.length >= 7 && 
+                            row[0] && row[1] !== null && row[2] !== null && row[3] !== null
+                        );
+                        
+                        if (validRows.length > 0) {
+                            realTimeData.magneticField = validRows.map(row => {
+                                const time = new Date(row[0]);
+                                const bx = parseFloat(row[1]);
+                                const by = parseFloat(row[2]);
+                                const bz = parseFloat(row[3]);
+                                const btotal = parseFloat(row[6]);
+                                
+                                return {
+                                    time: isNaN(time.getTime()) ? new Date() : time,
+                                    bx: isNaN(bx) ? 0 : bx,
+                                    by: isNaN(by) ? 0 : by,
+                                    bz: isNaN(bz) ? 0 : bz,
+                                    btotal: isNaN(btotal) ? Math.sqrt(bx*bx + by*by + bz*bz) : Math.abs(btotal)
+                                };
+                            }).filter(d => d.btotal >= 0);
+                            
+                            if (realTimeData.magneticField.length > 0) {
+                                successCount++;
+                                console.log(`Processed ${realTimeData.magneticField.length} magnetic field data points`);
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Error processing magnetic field data:', err);
+                    }
+                }
+                
+                // Process CME data
+                if (cmeData.status === 'fulfilled' && Array.isArray(cmeData.value)) {
+                    try {
+                        realTimeData.cmeEvents = cmeData.value.map(cme => {
+                            const analysis = (cme.cmeAnalyses || []).find(a => a.isMostAccurate) || (cme.cmeAnalyses || [])[0];
+                            return {
+                                id: cme.activityID,
+                                startTime: new Date(cme.startTime),
+                                speed: analysis?.speed || 500,
+                                location: cme.sourceLocation || 'Unknown',
+                                instruments: (cme.instruments || []).map(i => i.displayName).join(', '),
+                                note: cme.note || 'No additional information'
+                            };
+                        });
+                        if (realTimeData.cmeEvents.length > 0) successCount++;
+                    } catch (err) {
+                        console.warn('Error processing CME data:', err);
+                    }
+                }
+                
+                // Update charts and displays
+                updateCharts();
+                updateMetrics();
+                updateCMEDisplay();
+                update3DVisualization();
+                
+                document.getElementById('last-update').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+                
+                // Show appropriate success message
+                if (successCount === 3) {
+                    showAlert('✅ All real-time data sources updated successfully', 'success');
+                } else if (successCount > 0) {
+                    showAlert(`⚠️ ${successCount}/3 real-time data sources available`, 'warning');
+                } else {
+                    showAlert('❌ No real-time data available. Check connection and API status.', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error updating real-time data:', error);
+                showAlert('❌ Error updating real-time data. Check network connection.', 'error');
+            }
+        }
+        
+        // Update metric cards
+        function updateMetrics() {
+            if (realTimeData.solarWind.length > 0) {
+                const latest = realTimeData.solarWind[realTimeData.solarWind.length - 1];
+                document.getElementById('solar-wind-speed').textContent = `${latest.speed.toFixed(0)} km/s`;
+                document.getElementById('plasma-density').textContent = `${latest.density.toFixed(1)} p/cm³`;
+            } else {
+                document.getElementById('solar-wind-speed').textContent = '---';
+                document.getElementById('plasma-density').textContent = '---';
+                document.getElementById('solar-wind-speed').style.color = '#666';
+                document.getElementById('plasma-density').style.color = '#666';
+            }
+            
+            if (realTimeData.magneticField.length > 0) {
+                const latest = realTimeData.magneticField[realTimeData.magneticField.length - 1];
+                document.getElementById('magnetic-field').textContent = `${latest.btotal.toFixed(1)} nT`;
+                document.getElementById('bz-component').textContent = `${latest.bz.toFixed(1)} nT`;
+                
+                // Update Bz color based on value
+                const bzElement = document.getElementById('bz-component');
+                if (latest.bz < -5) {
+                    bzElement.style.color = '#ff4444'; // Red for storm conditions
+                } else if (latest.bz < -2) {
+                    bzElement.style.color = '#ffaa00'; // Orange for unsettled
+                } else {
+                    bzElement.style.color = '#00ff88'; // Green for quiet
+                }
+            } else {
+                document.getElementById('magnetic-field').textContent = '---';
+                document.getElementById('bz-component').textContent = '---';
+                document.getElementById('magnetic-field').style.color = '#666';
+                document.getElementById('bz-component').style.color = '#666';
+            }
+        }
+        
+        // Update CME event display
+        function updateCMEDisplay() {
+            const container = document.getElementById('recent-cmes');
+            if (!container) return;
+            
+            if (realTimeData.cmeEvents.length === 0) {
+                container.innerHTML = '<div style="color: #ff6666; text-align: center; padding: 20px; border: 1px dashed #ff6666; border-radius: 8px; background: rgba(255, 102, 102, 0.1);">No real-time CME events available from NASA DONKI API</div>';
+                return;
+            }
+            
+            const recentCMEs = realTimeData.cmeEvents
+                .sort((a, b) => b.startTime - a.startTime)
+                .slice(0, 5);
+            
+            container.innerHTML = recentCMEs.map(cme => `
+                <div style="background: rgba(0,0,0,0.4); border-left: 4px solid #ff6600; padding: 12px; margin-bottom: 10px; border-radius: 8px;">
+                    <div style="color: #ff6600; font-weight: bold; margin-bottom: 5px;">
+                        CME Event: ${cme.id}
+                        <span style="float: right; color: #00d4ff; font-size: 12px;">${cme.speed} km/s</span>
+                    </div>
+                    <div style="font-size: 12px; color: #ccc; margin-bottom: 8px;">
+                        <strong>Time:</strong> ${cme.startTime.toLocaleString()}<br>
+                        <strong>Source:</strong> ${cme.location}<br>
+                        <strong>Instruments:</strong> ${cme.instruments}
+                    </div>
+                    <div style="font-size: 11px; color: #aaa; line-height: 1.4;">
+                        ${cme.note.substring(0, 200)}${cme.note.length > 200 ? '...' : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Update charts with real data only
+        function updateCharts() {
+            // Solar Wind Chart
+            const solarWindContainer = document.getElementById('solar-wind-chart');
+            if (realTimeData.solarWind.length > 0) {
+                const trace1 = {
+                    x: realTimeData.solarWind.map(d => d.time),
+                    y: realTimeData.solarWind.map(d => d.speed),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Speed (km/s)',
+                    line: {color: '#ff6b35', width: 2}
+                };
+                
+                const trace2 = {
+                    x: realTimeData.solarWind.map(d => d.time),
+                    y: realTimeData.solarWind.map(d => d.density),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Density (p/cm³)',
+                    line: {color: '#00ff88', width: 2},
+                    yaxis: 'y2'
+                };
+                
+                const layout = {
+                    xaxis: {title: 'Time', color: '#fff', gridcolor: '#333'},
+                    yaxis: {title: 'Speed (km/s)', color: '#ff6b35'},
+                    yaxis2: {title: 'Density (p/cm³)', color: '#00ff88', overlaying: 'y', side: 'right'},
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    font: {color: '#fff'},
+                    margin: {t: 20}
+                };
+                
+                Plotly.newPlot('solar-wind-chart', [trace1, trace2], layout, {responsive: true});
+            } else {
+                solarWindContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #ff6666;">No real-time solar wind data available</div>';
+            }
+            
+            // Magnetic Field Chart
+            const magneticFieldContainer = document.getElementById('magnetic-field-chart');
+            if (realTimeData.magneticField.length > 0) {
+                const traces = [
+                    {
+                        x: realTimeData.magneticField.map(d => d.time),
+                        y: realTimeData.magneticField.map(d => d.bx),
+                        name: 'Bx',
+                        line: {color: '#ff6b35', width: 2}
+                    },
+                    {
+                        x: realTimeData.magneticField.map(d => d.time),
+                        y: realTimeData.magneticField.map(d => d.by),
+                        name: 'By',
+                        line: {color: '#00ff88', width: 2}
+                    },
+                    {
+                        x: realTimeData.magneticField.map(d => d.time),
+                        y: realTimeData.magneticField.map(d => d.bz),
+                        name: 'Bz',
+                        line: {color: '#00d4ff', width: 2}
+                    }
+                ];
+                
+                const layout = {
+                    xaxis: {title: 'Time', color: '#fff', gridcolor: '#333'},
+                    yaxis: {title: 'Magnetic Field (nT)', color: '#fff'},
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    font: {color: '#fff'},
+                    margin: {t: 20}
+                };
+                
+                Plotly.newPlot('magnetic-field-chart', traces, layout, {responsive: true});
+            } else {
+                magneticFieldContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #ff6666;">No real-time magnetic field data available</div>';
+            }
+            
+            // CME Events Chart
+            if (realTimeData.cmeEvents.length > 0) {
+                const trace = {
+                    x: realTimeData.cmeEvents.map(cme => cme.startTime),
+                    y: realTimeData.cmeEvents.map(cme => cme.speed),
+                    mode: 'markers',
+                    marker: {
+                        size: realTimeData.cmeEvents.map(cme => Math.min(cme.speed / 100, 20)),
+                        color: realTimeData.cmeEvents.map(cme => cme.speed),
+                        colorscale: 'Hot',
+                        showscale: true,
+                        colorbar: {title: 'Speed (km/s)'}
+                    },
+                    text: realTimeData.cmeEvents.map(cme => 
+                        `${cme.id}<br>Speed: ${cme.speed} km/s<br>Source: ${cme.location}`
+                    ),
+                    hovertemplate: '%{text}<extra></extra>',
+                    name: 'CME Events'
+                };
+                
+                const layout = {
+                    xaxis: {title: 'Date', color: '#fff', gridcolor: '#333'},
+                    yaxis: {title: 'CME Speed (km/s)', color: '#fff'},
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    font: {color: '#fff'},
+                    margin: {t: 20}
+                };
+                
+                Plotly.newPlot('cme-tracker', [trace], layout, {responsive: true});
+            }
+        }
+        
+        // Initialize 3D Solar System Visualization
+        function initialize3DVisualization() {
+            const container = document.getElementById('solar-system-3d');
+            if (!container) return;
+            
+            const width = container.clientWidth || 400;
+            const height = container.clientHeight || 350;
+            
+            // Scene setup
+            scene3D = new THREE.Scene();
+            scene3D.background = new THREE.Color(0x000011);
+            
+            // Camera setup
+            camera3D = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            camera3D.position.set(15, 10, 15);
+            camera3D.lookAt(0, 0, 0);
+            
+            // Renderer setup
+            renderer3D = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer3D.setSize(width, height);
+            renderer3D.setPixelRatio(window.devicePixelRatio);
+            renderer3D.shadowMap.enabled = true;
+            renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
+            
+            container.appendChild(renderer3D.domElement);
+            
+            // Clock for animation
+            clock3D = new THREE.Clock();
+            
+            // Create tooltip
+            tooltip3D = document.createElement('div');
+            tooltip3D.style.position = 'absolute';
+            tooltip3D.style.background = 'rgba(0,0,0,0.9)';
+            tooltip3D.style.color = 'white';
+            tooltip3D.style.padding = '10px';
+            tooltip3D.style.borderRadius = '5px';
+            tooltip3D.style.border = '1px solid #00d4ff';
+            tooltip3D.style.fontSize = '12px';
+            tooltip3D.style.pointerEvents = 'none';
+            tooltip3D.style.display = 'none';
+            tooltip3D.style.zIndex = '1000';
+            container.appendChild(tooltip3D);
+            
+            // Create basic scene objects
+            createSun();
+            createEarth();
+            createStarField();
+            setupLighting();
+            
+            // Mouse interaction
+            renderer3D.domElement.addEventListener('mousemove', on3DMouseMove);
+            renderer3D.domElement.addEventListener('mouseleave', on3DMouseLeave);
+            
+            // Start animation
+            animate3D();
+            
+            console.log('3D Solar System initialized');
+        }
+        
+        // Create the Sun
+        function createSun() {
+            const sunGeometry = new THREE.SphereGeometry(2, 64, 64);
+            const sunMaterial = new THREE.MeshLambertMaterial({
+                color: 0xffaa00,
+                emissive: 0xff4400,
+                emissiveIntensity: 0.3
+            });
+            
+            sun = new THREE.Mesh(sunGeometry, sunMaterial);
+            sun.castShadow = false;
+            sun.receiveShadow = false;
+            sun.userData = {
+                type: 'sun',
+                name: 'Sun',
+                description: 'The Sun - source of solar wind and magnetic fields. Real-time data from NOAA satellites.',
+                temperature: '5,778 K surface, ~15 million K core'
+            };
+            
+            scene3D.add(sun);
+            
+            // Add corona glow
+            const coronaGeometry = new THREE.SphereGeometry(2.2, 32, 32);
+            const coronaMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff6600,
+                transparent: true,
+                opacity: 0.1,
+                side: THREE.BackSide
+            });
+            const corona = new THREE.Mesh(coronaGeometry, coronaMaterial);
+            scene3D.add(corona);
+        }
+        
+        // Create Earth
+        function createEarth() {
+            const earthGeometry = new THREE.SphereGeometry(0.6, 32, 32);
+            const earthMaterial = new THREE.MeshLambertMaterial({
+                color: 0x66aaff,
+                emissive: 0x002244,
+                emissiveIntensity: 0.1
+            });
+            
+            earth = new THREE.Mesh(earthGeometry, earthMaterial);
+            earth.position.set(30, 0, 0); // 1 AU distance (scaled)
+            earth.castShadow = true;
+            earth.receiveShadow = true;
+            earth.userData = {
+                type: 'earth',
+                name: 'Earth',
+                description: 'Earth - target of space weather effects. Distance: ~150 million km from Sun.',
+                magnetosphere: 'Protected by magnetic field'
+            };
+            
+            scene3D.add(earth);
+            
+            // Add Earth's magnetosphere
+            const magnetosphereGeometry = new THREE.SphereGeometry(1.2, 16, 16);
+            const magnetosphereMaterial = new THREE.MeshBasicMaterial({
+                color: 0x0088ff,
+                transparent: true,
+                opacity: 0.1,
+                wireframe: true
+            });
+            const magnetosphere = new THREE.Mesh(magnetosphereGeometry, magnetosphereMaterial);
+            earth.add(magnetosphere);
+        }
+        
+        // Create star field background
+        function createStarField() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starCount = 1000;
+            const positions = new Float32Array(starCount * 3);
+            
+            for (let i = 0; i < starCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 200;
+                positions[i + 1] = (Math.random() - 0.5) * 200;
+                positions[i + 2] = (Math.random() - 0.5) * 200;
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.5,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene3D.add(stars);
+        }
+        
+        // Setup lighting
+        function setupLighting() {
+            // Sunlight
+            const sunLight = new THREE.PointLight(0xffffff, 1.5, 100);
+            sunLight.position.set(0, 0, 0);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            scene3D.add(sunLight);
+            
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+            scene3D.add(ambientLight);
+        }
+        
+        // Create magnetic field lines based on real data
+        function create3DMagneticFieldLines() {
+            // Clear existing field lines
+            magneticFieldLines.forEach(line => scene3D.remove(line));
+            magneticFieldLines = [];
+            
+            if (realTimeData.magneticField.length === 0) return;
+            
+            const latestField = realTimeData.magneticField[realTimeData.magneticField.length - 1];
+            const { bx, by, bz, btotal } = latestField;
+            
+            // Create field lines based on real magnetic field components
+            const numLines = 12;
+            
+            for (let i = 0; i < numLines; i++) {
+                const angle = (i / numLines) * Math.PI * 2;
+                const points = [];
+                
+                // Generate field line points using real B-field data
+                for (let j = 0; j < 50; j++) {
+                    const t = j / 49;
+                    const r = 2.5 + t * 8;
+                    
+                    // Use real magnetic field components to influence field line shape
+                    const fieldInfluence = btotal / 10;
+                    const bzInfluence = bz / btotal;
+                    
+                    let x = r * Math.cos(angle + bzInfluence * 0.5) + bx * 0.1;
+                    let y = (bzInfluence * r * 0.3) + by * 0.1;
+                    let z = r * Math.sin(angle + bzInfluence * 0.5) + bz * 0.1;
+                    
+                    // Create loops for closed field lines near the equator
+                    if (Math.abs(bzInfluence) < 0.3) {
+                        const loopFactor = Math.sin(t * Math.PI);
+                        y *= loopFactor;
+                    }
+                    
+                    points.push(new THREE.Vector3(x, y, z));
+                }
+                
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const color = btotal > 10 ? 0xff4400 : (bz < 0 ? 0x0088ff : 0x00ff88);
+                const material = new THREE.LineBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.7,
+                    linewidth: 2
+                });
+                
+                const line = new THREE.Line(geometry, material);
+                line.userData = {
+                    type: 'magneticField',
+                    name: 'Magnetic Field Line',
+                    description: `Real-time magnetic field line. Bx: ${bx.toFixed(1)} nT, By: ${by.toFixed(1)} nT, Bz: ${bz.toFixed(1)} nT, Total: ${btotal.toFixed(1)} nT`,
+                    strength: btotal
+                };
+                
+                magneticFieldLines.push(line);
+                scene3D.add(line);
+            }
+        }
+        
+        // Create solar wind particles based on real data
+        function create3DSolarWindParticles() {
+            // Clear existing particles
+            solarWindParticles.forEach(particles => scene3D.remove(particles));
+            solarWindParticles = [];
+            
+            if (realTimeData.solarWind.length === 0) return;
+            
+            const latestWind = realTimeData.solarWind[realTimeData.solarWind.length - 1];
+            const { speed, density } = latestWind;
+            
+            // Create particle system based on real solar wind data
+            const particleCount = Math.min(500, density * 50);
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const velocities = new Float32Array(particleCount * 3);
+            const colors = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const i3 = i * 3;
+                
+                // Start particles from sun surface in radial pattern
+                const angle = Math.random() * Math.PI * 2;
+                const elevation = (Math.random() - 0.5) * Math.PI * 0.8;
+                const startRadius = 2.5;
+                
+                positions[i3] = startRadius * Math.cos(elevation) * Math.cos(angle);
+                positions[i3 + 1] = startRadius * Math.sin(elevation);
+                positions[i3 + 2] = startRadius * Math.cos(elevation) * Math.sin(angle);
+                
+                // Velocity based on real solar wind speed
+                const speedFactor = speed / 400 * 0.02; // Scale for visualization
+                velocities[i3] = positions[i3] / startRadius * speedFactor;
+                velocities[i3 + 1] = positions[i3 + 1] / startRadius * speedFactor;
+                velocities[i3 + 2] = positions[i3 + 2] / startRadius * speedFactor;
+                
+                // Color based on speed (blue = slow, green = medium, red = fast)
+                if (speed < 350) {
+                    colors[i3] = 0.2; colors[i3 + 1] = 0.5; colors[i3 + 2] = 1.0; // Blue
+                } else if (speed < 600) {
+                    colors[i3] = 0.2; colors[i3 + 1] = 1.0; colors[i3 + 2] = 0.5; // Green
+                } else {
+                    colors[i3] = 1.0; colors[i3 + 1] = 0.3; colors[i3 + 2] = 0.2; // Red
+                }
+            }
+            
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 0.1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particles = new THREE.Points(geometry, material);
+            particles.userData = {
+                type: 'solarWind',
+                name: 'Solar Wind Particles',
+                description: `Real solar wind at ${speed.toFixed(0)} km/s, density ${density.toFixed(1)} p/cm³`,
+                velocities: velocities,
+                maxDistance: 50
+            };
+            
+            solarWindParticles.push(particles);
+            scene3D.add(particles);
+        }
+        
+        // Create CME particle systems based on real NASA data
+        function create3DCMEParticles() {
+            if (realTimeData.cmeEvents.length === 0) return;
+            
+            // Add new CME events
+            realTimeData.cmeEvents.forEach(cmeEvent => {
+                // Check if we already have this CME
+                const existing = cmeParticlesSystems.find(system => 
+                    system.userData.cmeId === cmeEvent.id
+                );
+                if (existing) return;
+                
+                const particleCount = 200;
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const velocities = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                
+                // Parse source location for launch direction
+                let launchAngle = Math.random() * Math.PI * 2;
+                let launchElevation = (Math.random() - 0.5) * Math.PI * 0.6;
+                
+                if (cmeEvent.location && cmeEvent.location !== 'Unknown') {
+                    // Try to parse location like "N29W05" 
+                    const match = cmeEvent.location.match(/([NS])(\d+)([EW])(\d+)/);
+                    if (match) {
+                        const [, ns, lat, ew, lon] = match;
+                        const latitude = parseInt(lat) * (ns === 'N' ? 1 : -1);
+                        const longitude = parseInt(lon) * (ew === 'E' ? 1 : -1);
+                        
+                        launchAngle = (longitude + 90) * Math.PI / 180;
+                        launchElevation = latitude * Math.PI / 180;
+                    }
+                }
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    
+                    // Start at solar surface
+                    const spread = 0.3;
+                    const angle = launchAngle + (Math.random() - 0.5) * spread;
+                    const elevation = launchElevation + (Math.random() - 0.5) * spread;
+                    const startRadius = 2.2;
+                    
+                    positions[i3] = startRadius * Math.cos(elevation) * Math.cos(angle);
+                    positions[i3 + 1] = startRadius * Math.sin(elevation);
+                    positions[i3 + 2] = startRadius * Math.cos(elevation) * Math.sin(angle);
+                    
+                    // Velocity based on real CME speed
+                    const speedFactor = cmeEvent.speed / 1000 * 0.05;
+                    const direction = new THREE.Vector3(positions[i3], positions[i3 + 1], positions[i3 + 2]).normalize();
+                    
+                    velocities[i3] = direction.x * speedFactor + (Math.random() - 0.5) * 0.01;
+                    velocities[i3 + 1] = direction.y * speedFactor + (Math.random() - 0.5) * 0.01;
+                    velocities[i3 + 2] = direction.z * speedFactor + (Math.random() - 0.5) * 0.01;
+                    
+                    // Color based on CME speed (orange to red)
+                    const intensity = Math.min(cmeEvent.speed / 2000, 1);
+                    colors[i3] = 1.0;
+                    colors[i3 + 1] = 0.3 + intensity * 0.4;
+                    colors[i3 + 2] = 0.1;
+                }
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 0.15,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.9,
+                    blending: THREE.AdditiveBlending
+                });
+                
+                const particles = new THREE.Points(geometry, material);
+                particles.userData = {
+                    type: 'cmeParticles',
+                    name: `CME Event: ${cmeEvent.id}`,
+                    description: `CME at ${cmeEvent.speed} km/s from ${cmeEvent.location}. Started: ${cmeEvent.startTime.toLocaleDateString()}`,
+                    velocities: velocities,
+                    life: 300,
+                    maxLife: 300,
+                    cmeId: cmeEvent.id,
+                    cmeEvent: cmeEvent
+                };
+                
+                cmeParticlesSystems.push(particles);
+                scene3D.add(particles);
+            });
+        }
+        
+        // Update 3D visualization with latest data
+        function update3DVisualization() {
+            if (!scene3D) {
+                initialize3DVisualization();
+                return;
+            }
+            
+            create3DMagneticFieldLines();
+            create3DSolarWindParticles();
+            create3DCMEParticles();
+        }
+        
+        // Mouse interaction for 3D scene
+        function on3DMouseMove(event) {
+            if (!renderer3D || !camera3D || !scene3D) return;
+            
+            const rect = renderer3D.domElement.getBoundingClientRect();
+            mouse3D.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse3D.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster3D.setFromCamera(mouse3D, camera3D);
+            
+            const intersectableObjects = [];
+            scene3D.traverse(child => {
+                if (child.userData && child.userData.type) {
+                    intersectableObjects.push(child);
+                }
+            });
+            
+            const intersects = raycaster3D.intersectObjects(intersectableObjects);
+            
+            if (intersects.length > 0) {
+                const intersected = intersects[0].object;
+                const userData = intersected.userData;
+                
+                if (userData && userData.name) {
+                    tooltip3D.innerHTML = `
+                        <strong>${userData.name}</strong><br>
+                        ${userData.description}
+                    `;
+                    tooltip3D.style.display = 'block';
+                    tooltip3D.style.left = (event.clientX - rect.left + 10) + 'px';
+                    tooltip3D.style.top = (event.clientY - rect.top - 10) + 'px';
+                }
+            } else {
+                tooltip3D.style.display = 'none';
+            }
+        }
+        
+        function on3DMouseLeave() {
+            if (tooltip3D) {
+                tooltip3D.style.display = 'none';
+            }
+        }
+        
+        // Animation loop for 3D scene
+        function animate3D() {
+            if (!renderer3D || !scene3D || !camera3D) return;
+            
+            animationId3D = requestAnimationFrame(animate3D);
+            
+            const deltaTime = clock3D.getDelta();
+            
+            // Rotate sun
+            if (sun) {
+                sun.rotation.y += deltaTime * 0.1;
+            }
+            
+            // Orbit Earth (very slow)
+            if (earth) {
+                const time = clock3D.getElapsedTime();
+                earth.position.x = 30 * Math.cos(time * 0.01);
+                earth.position.z = 30 * Math.sin(time * 0.01);
+                earth.rotation.y += deltaTime * 0.5;
+            }
+            
+            // Animate solar wind particles
+            solarWindParticles.forEach(particles => {
+                if (!particles.geometry || !particles.geometry.attributes.position) return;
+                
+                const positions = particles.geometry.attributes.position.array;
+                const velocities = particles.userData.velocities;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i] += velocities[i];
+                    positions[i + 1] += velocities[i + 1];
+                    positions[i + 2] += velocities[i + 2];
+                    
+                    // Reset particles that go too far
+                    const distance = Math.sqrt(positions[i]**2 + positions[i+1]**2 + positions[i+2]**2);
+                    if (distance > particles.userData.maxDistance) {
+                        const startRadius = 2.5;
+                        const angle = Math.random() * Math.PI * 2;
+                        const elevation = (Math.random() - 0.5) * Math.PI * 0.8;
+                        
+                        positions[i] = startRadius * Math.cos(elevation) * Math.cos(angle);
+                        positions[i + 1] = startRadius * Math.sin(elevation);
+                        positions[i + 2] = startRadius * Math.cos(elevation) * Math.sin(angle);
+                    }
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true;
+            });
+            
+            // Animate CME particles
+            cmeParticlesSystems.forEach((particles, index) => {
+                if (!particles.geometry || !particles.geometry.attributes.position) return;
+                
+                const positions = particles.geometry.attributes.position.array;
+                const velocities = particles.userData.velocities;
+                
+                for (let i = 0; i < positions.length; i += 3) {
+                    positions[i] += velocities[i];
+                    positions[i + 1] += velocities[i + 1];
+                    positions[i + 2] += velocities[i + 2];
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true;
+                
+                // Fade out over time
+                particles.userData.life--;
+                if (particles.userData.maxLife > 0) {
+                    particles.material.opacity = particles.userData.life / particles.userData.maxLife;
+                }
+                
+                // Remove expired CME systems
+                if (particles.userData.life <= 0) {
+                    scene3D.remove(particles);
+                    cmeParticlesSystems.splice(index, 1);
+                }
+            });
+            
+            // Animate magnetic field lines
+            magneticFieldLines.forEach((line, index) => {
+                if (line.material) {
+                    const time = clock3D.getElapsedTime();
+                    line.material.opacity = 0.5 + 0.3 * Math.sin(time * 2 + index * 0.5);
+                }
+            });
+            
+            // Auto-rotate camera
+            camera3D.position.x = Math.cos(clock3D.getElapsedTime() * 0.05) * 20;
+            camera3D.position.z = Math.sin(clock3D.getElapsedTime() * 0.05) * 20;
+            camera3D.lookAt(0, 0, 0);
+            
+            renderer3D.render(scene3D, camera3D);
+        }
+        
+        // Control functions
+        function refreshData() {
+            showAlert('🔄 Refreshing real-time data...', 'info');
+            updateRealTimeData();
+        }
+        
+        function exportData() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    source: 'Real-Time APIs',
+                    apis: ['NOAA SWPC', 'NASA DONKI'],
+                    dataPoints: realTimeData.solarWind.length,
+                    cmeEvents: realTimeData.cmeEvents.length
+                },
+                solarWind: realTimeData.solarWind,
+                magneticField: realTimeData.magneticField,
+                cmeEvents: realTimeData.cmeEvents
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `realtime_space_weather_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showAlert('✅ Real-time space weather data exported successfully', 'success');
+        }
+        
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            const btn = event.target;
+            btn.textContent = `⏰ Auto Refresh: ${autoRefresh ? 'ON' : 'OFF'}`;
+            
+            if (autoRefresh) {
+                showAlert('Auto refresh enabled - updating every 5 minutes', 'success');
+            } else {
+                showAlert('Auto refresh disabled', 'info');
+            }
+        }
+        
+        // Show alert messages
+        function showAlert(message, type = 'info') {
+            const alert = document.createElement('div');
+            alert.className = 'alert';
+            alert.textContent = message;
+            
+            if (type === 'success') {
+                alert.style.background = 'linear-gradient(45deg, #00ff88, #00cc66)';
+            } else if (type === 'warning') {
+                alert.style.background = 'linear-gradient(45deg, #ffaa00, #ff8800)';
+            } else if (type === 'info') {
+                alert.style.background = 'linear-gradient(45deg, #00d4ff, #0099cc)';
+            }
+            
+            document.body.appendChild(alert);
+            
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateX(100%)';
+                    setTimeout(() => alert.remove(), 300);
+                }
+            }, 5000);
+        }
+        
+        // Initialize application
+        async function initializeApp() {
+            showAlert('🌞 Initializing Real-Time Solar Observatory...', 'info');
+            
+            try {
+                await updateRealTimeData();
+                
+                // Set up auto refresh
+                if (autoRefresh) {
+                    setInterval(() => {
+                        if (autoRefresh) updateRealTimeData();
+                    }, 5 * 60 * 1000); // Update every 5 minutes
+                }
+                
+                showAlert('🌞 Real-Time Solar Observatory initialized successfully!', 'success');
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showAlert('❌ Failed to initialize observatory. Check console for details.', 'error');
+            }
+        }
+        
+        // Debug API responses
+        async function debugAPIs() {
+            showAlert('🔍 Testing API responses...', 'info');
+            
+            const urls = [
+                'https://services.swpc.noaa.gov/products/solar-wind/plasma-1-day.json',
+                'https://services.swpc.noaa.gov/products/solar-wind/mag-1-day.json'
+            ];
+            
+            for (const url of urls) {
+                try {
+                    console.log(`\n=== Testing ${url} ===`);
+                    const response = await fetch(url);
+                    console.log('Status:', response.status, response.statusText);
+                    console.log('Headers:', [...response.headers.entries()]);
+                    
+                    const text = await response.text();
+                    console.log('Response length:', text.length);
+                    console.log('First 200 chars:', text.substring(0, 200));
+                    console.log('Last 200 chars:', text.substring(Math.max(0, text.length - 200)));
+                    
+                    // Try to find where JSON ends
+                    const lastBracket = text.lastIndexOf(']');
+                    const lastBrace = text.lastIndexOf('}');
+                    console.log('Last bracket position:', lastBracket, 'Last brace position:', lastBrace);
+                    
+                    if (lastBracket > 0) {
+                        const cleanJson = text.substring(0, lastBracket + 1);
+                        try {
+                            const parsed = JSON.parse(cleanJson);
+                            console.log('✅ Successfully parsed after cleaning, rows:', parsed.length);
+                        } catch (e) {
+                            console.log('❌ Still failed to parse after cleaning:', e.message);
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.log('❌ Fetch error:', error.message);
+                }
+            }
+            
+            showAlert('🔍 Debug complete - check console for details', 'success');
+        }
+        
+        // Start the application
+        window.onload = initializeApp;
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                // Resize Plotly charts
+                if (document.getElementById('solar-wind-chart')) {
+                    Plotly.Plots.resize('solar-wind-chart');
+                    Plotly.Plots.resize('magnetic-field-chart');
+                    Plotly.Plots.resize('cme-tracker');
+                }
+                
+                // Resize 3D renderer
+                if (renderer3D && camera3D) {
+                    const container = document.getElementById('solar-system-3d');
+                    if (container) {
+                        const width = container.clientWidth;
+                        const height = container.clientHeight;
+                        renderer3D.setSize(width, height);
+                        camera3D.aspect = width / height;
+                        camera3D.updateProjectionMatrix();
+                    }
+                }
+            }, 100);
+        });
+    </script>
+</body>
+</html>

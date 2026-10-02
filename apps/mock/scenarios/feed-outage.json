@@ -1,0 +1,13 @@
+{
+  "title": "Feed outages",
+  "description": "Solar wind data stops for 20 min, then GOES X-ray for 10 min. Tests stale badges and the 'data delayed' alert. About 6 minutes.",
+  "tasks": ["Is the solar wind value on screen current?", "Which data source is having problems?"],
+  "speed": 10,
+  "events": [
+    { "at": 1, "type": "note", "text": "RTSW feed down for 20 min" },
+    { "at": 1, "type": "feedOutage", "feed": "rtsw", "durationMin": 20 },
+    { "at": 30, "type": "note", "text": "GOES X-ray feed down for 10 min" },
+    { "at": 30, "type": "feedOutage", "feed": "goes_xray", "durationMin": 10 },
+    { "at": 55, "type": "speed", "value": 60 }
+  ]
+}

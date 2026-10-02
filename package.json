@@ -1,0 +1,32 @@
+{
+  "name": "reconnection-to-cme",
+  "version": "0.3.0",
+  "description": "Live-data simulator of magnetic reconnection → solar flare → CME → geomagnetic coupling",
+  "private": true,
+  "scripts": {
+    "mock": "npm run dev -w @cme/mock",
+    "test": "npm test -w @cme/physics -w @cme/mock",
+    "typecheck": "tsc -p packages/shared && tsc -p packages/physics && tsc -p apps/mock",
+    "start": "python server.py 8000",
+    "snapshot": "python docs/reconnection/scripts/build_snapshot.py",
+    "snapshot:refresh": "python docs/reconnection/scripts/build_snapshot.py --refresh"
+  },
+  "keywords": [
+    "magnetic-reconnection",
+    "solar-flare",
+    "cme",
+    "space-weather",
+    "noaa",
+    "nasa-donki"
+  ],
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
