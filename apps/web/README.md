@@ -22,7 +22,8 @@ The browser only calls same-origin `/api/v1/*`. In dev, Vite proxies REST and th
 ```
 src/
   main.tsx, router.tsx     routes: / /sun /replay /events /events/:kind/:id /status
-  shell/                   AppShell, TopBar (ConnectionBadge, AlertToaster… next)
+  shell/                   AppShell, TopBar, ConnectionBadge, FreshnessBadge (AlertToaster… later)
+  hud/DataAge.tsx          "73 s" next to any live value; amber once its feed is stale
   pages/                   one file per route; most are placeholders until their phase
   store/live.ts            Zustand live store: seq, clock, series, lists, connection state
   stream/client.ts         LiveStream: boot, seq check + resync, reconnect, polling fallback
@@ -31,9 +32,11 @@ src/
   lib/series.ts            ColumnSeries: capped Float64Array time series, copy-free views for charts
   lib/localCache.ts        IndexedDB copy of the last state
   lib/api.ts               getJson(), serverNow() (data time comes from the server clock)
+  lib/clock.ts             useServerNow(): one shared 1 s ticker for every age display
+  lib/freshness.ts         fresh / stale / unknown rules, formatAge()
 ```
 
-Still to come: `scene/` (r3f), `hud/` (uPlot charts).
+Still to come: `scene/` (r3f), `hud/` charts (uPlot).
 
 ## How the live stream behaves
 
@@ -47,12 +50,21 @@ Still to come: `scene/` (r3f), `hud/` (uPlot charts).
 | No message for 40 s (pings come every 15 s) | Treats the socket as dead and reconnects |
 | Cached seq | Never used to resume: it may come from another server run |
 
+## Badges (top bar)
+
+| Badge | States |
+|---|---|
+| Connection | **Live** (green) · Connecting… · Reconnecting… · Delayed · polling · **Offline · saved data** (amber) |
+| Freshness | **All data fresh** (green) · `<feed>: delayed` / `N feeds delayed` (amber) |
+
+A feed is stale when the server flags it **or** its newest data is older than `staleAfterS` measured on the server clock. The second rule lets ages keep counting and turn amber while the stream is down. Data restored from the browser cache is aged against the real clock, so after a reload offline it shows its true age.
+
 Try it: open `/status` and use the mock's control page (http://localhost:8787/mock/ui) to inject faults.
 
 ## Status
 
 - [x] Step 1: scaffold, routes, dev proxy to the mock, `/status` page reading `GET /api/v1/health`
 - [x] Step 2: Zustand store + `useLiveStream` + IndexedDB cache; `/status` reads the live store
-- [ ] Step 3: ConnectionBadge + FreshnessBadge
+- [x] Step 3: ConnectionBadge + FreshnessBadge + DataAge
 - [ ] Step 4: 3D scene (Sun, Mercury, Venus, Earth, L1)
 - [ ] Step 5: XrayChart + WindPanel

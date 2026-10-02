@@ -1,4 +1,6 @@
 import { NavLink } from "react-router";
+import { ConnectionBadge } from "./ConnectionBadge.tsx";
+import { FreshnessBadge } from "./FreshnessBadge.tsx";
 
 const links = [
   { to: "/", label: "Live" },
@@ -19,6 +21,10 @@ export function TopBar() {
           </NavLink>
         ))}
       </nav>
+      <div className="badges">
+        <FreshnessBadge />
+        <ConnectionBadge />
+      </div>
     </header>
   );
 }

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { emptyWind, emptyXray, type Alert, type Flare, type LiveState } from "@cme/shared";
+import { serverNow } from "../src/lib/api.ts";
 import { createLiveStore } from "../src/store/live.ts";
 import { applyAlert, applyDelta, applySnapshot, toLiveState } from "../src/stream/apply.ts";
 
@@ -81,4 +82,16 @@ test("cached snapshots are painted without trusting their seq; alerts upsert", (
   assert.equal(store.getState().alerts.length, 1);
   assert.equal(store.getState().alerts[0].clearedAt, NOW + 60);
   assert.equal(toLiveState(store.getState())!.seq, 12);
+});
+
+test("a cached state is timed by the wall clock, so old data shows its real age", () => {
+  const store = createLiveStore();
+  const savedAt = Math.floor(Date.now() / 1000) - 3 * 3600; // saved 3 h ago, at 60x mock speed
+  applySnapshot(store, state({ clock: { ...clock, now: savedAt, speed: 60 } }), "cache", false);
+  const { clock: c, clockAt } = store.getState();
+  const age = serverNow(c!, clockAt) - savedAt;
+  assert.ok(Math.abs(age - 3 * 3600) < 2, `cached data looks ${age} s old`);
+
+  applySnapshot(store, state({ clock: { ...clock, now: savedAt, speed: 60 } }), "ws");
+  assert.equal(store.getState().clock!.speed, 60, "a live snapshot keeps the server's speed");
 });

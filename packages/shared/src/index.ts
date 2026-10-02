@@ -107,6 +107,7 @@ export interface FeedStatus {
   id: FeedId;
   label: string;
   cadenceS: number;
+  staleAfterS: number; // data older than this is stale (the client re-checks it when the stream is down)
   lastOkAt: Unix | null;
   dataTs: Unix | null; // newest data time in the feed
   error: string | null;

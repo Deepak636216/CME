@@ -443,7 +443,7 @@ export class Engine {
       if (!down) this.lastOk.set(id, Math.round(now));
       const ts = down && (id === "regions" || id === "donki") ? (this.lastOk.get(id) ?? null) : dataTs[id];
       return {
-        id, label, cadenceS, lastOkAt: this.lastOk.get(id) ?? null, dataTs: ts,
+        id, label, cadenceS, staleAfterS, lastOkAt: this.lastOk.get(id) ?? null, dataTs: ts,
         error: down ? "HTTP 503 Service Unavailable (simulated outage)" : null,
         stale: ts === null || now - ts > staleAfterS,
       };

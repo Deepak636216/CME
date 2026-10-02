@@ -16,8 +16,11 @@ export function applySnapshot(store: LiveStore, s: LiveState, source: Conn["sour
   mergeSeries(cur.wind, s.wind);
   store.setState({
     seq: trustSeq ? s.seq : null,
-    clock: s.clock,
-    clockAt: wallNow(),
+    // A saved state's clock is from when it was saved. Until the server speaks, assume real time
+    // (true in production), so cached data shows its true age instead of looking fresh.
+    ...(source === "cache"
+      ? { clock: { ...s.clock, speed: 1 }, clockAt: s.clock.now }
+      : { clock: s.clock, clockAt: wallNow() }),
     seriesRev: cur.seriesRev + 1,
     regions: s.regions,
     flares: s.flares,

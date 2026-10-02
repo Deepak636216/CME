@@ -1,23 +1,22 @@
-import { useEffect, useState } from "react";
-import { serverNow } from "../lib/api.ts";
+import { DataAge } from "../hud/DataAge.tsx";
+import { useServerNow, useWallSecond } from "../lib/clock.ts";
+import { feedFreshness, formatAge } from "../lib/freshness.ts";
 import { useLive } from "../store/live.ts";
 
 /** Feed health and stream diagnostics, read from the live store (kept current by the WebSocket). */
 export function StatusPage() {
   const clock = useLive((s) => s.clock);
-  const clockAt = useLive((s) => s.clockAt);
   const feeds = useLive((s) => s.feeds);
   const seq = useLive((s) => s.seq);
   const conn = useLive((s) => s.conn);
   useLive((s) => s.seriesRev); // re-render when points arrive
   const xrayLen = useLive((s) => s.xray.length);
   const windLen = useLive((s) => s.wind.length);
-  useSecondTick();
+  const now = useServerNow();
+  const wall = useWallSecond();
 
-  if (!clock) return <p className="muted">Connecting… ({conn.status})</p>;
+  if (!clock || now === null) return <p className="muted">Connecting… ({conn.status})</p>;
 
-  const now = serverNow(clock, clockAt);
-  const wall = Date.now() / 1000;
   return (
     <section>
       <h1>Feed status</h1>
@@ -39,8 +38,12 @@ export function StatusPage() {
             <tr key={f.id}>
               <td>{f.label}</td>
               <td>{f.cadenceS} s</td>
-              <td>{f.dataTs == null ? "—" : formatAge(now - f.dataTs)}</td>
-              <td className={f.stale ? "stale" : "ok"}>{f.stale ? `stale${f.error ? `: ${f.error}` : ""}` : "ok"}</td>
+              <td>
+                <DataAge ts={f.dataTs} feed={f.id} />
+              </td>
+              <td className={feedFreshness(f, now) === "fresh" ? "ok" : "stale"}>
+                {f.error ?? (feedFreshness(f, now) === "fresh" ? "ok" : `no data for > ${formatAge(f.staleAfterS)}`)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -84,19 +87,4 @@ export function StatusPage() {
       </table>
     </section>
   );
-}
-
-function useSecondTick() {
-  const [, tick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => tick((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-}
-
-function formatAge(s: number): string {
-  if (s < 90) return `${Math.max(0, Math.round(s))} s`;
-  if (s < 5400) return `${Math.round(s / 60)} min`;
-  if (s < 172800) return `${Math.round(s / 3600)} h`;
-  return `${Math.round(s / 86400)} d`;
 }

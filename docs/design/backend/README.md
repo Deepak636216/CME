@@ -15,7 +15,7 @@ Diagrams are built in Excalidraw. The editable sources are in [diagrams/src/](di
 
 | Noun | Meaning |
 |---|---|
-| Feed / FeedStatus | One upstream URL and its cadence / last success, data age, error |
+| Feed / FeedStatus | One upstream URL and its cadence, stale threshold / last success, data age, error |
 | XraySample, WindSample | 1-minute GOES and L1 measurements |
 | Flare, SunspotRegion | Detected flare and the region it came from |
 | CME, ArrivalForecast | DONKI CME and our drag-based model (DBM) ETA at Earth |

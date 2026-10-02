@@ -39,7 +39,7 @@ Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI pa
 - [ ] r3f scene: Sun, Mercury, Venus, Earth, L1 from astronomy-engine
 - [x] `useLiveStream`: snapshot/delta apply, `seq` gap → resync, backoff, polling fallback (tested against the mock's chaos modes)
 - [x] Zustand live store (Float64Array series, 7 days) + IndexedDB cache
-- [ ] ConnectionBadge and FreshnessBadge
+- [x] ConnectionBadge and FreshnessBadge; `DataAge` next to values (`FeedStatus.staleAfterS` added to the contract)
 - [ ] XrayChart and WindPanel (uPlot, ≤ 1 Hz)
 - **Done when:** a cold load is interactive in < 2 s and runs at 60 fps; pulling the network cable and reconnecting catches up with no reload.
 
