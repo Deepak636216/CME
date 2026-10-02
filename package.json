@@ -4,7 +4,7 @@
   "description": "Live-data simulator of magnetic reconnection → solar flare → CME → geomagnetic coupling",
   "private": true,
   "scripts": {
-    "mock": "npm run dev -w @cme/mock",
+    "mock": "npm run dev -w @cme/mock --",
     "test": "npm test -w @cme/physics -w @cme/mock",
     "typecheck": "tsc -p packages/shared && tsc -p packages/physics && tsc -p apps/mock",
     "start": "python server.py 8000",

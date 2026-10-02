@@ -310,7 +310,8 @@ export class Engine {
 
   private addFlare(f: Omit<FlareInternal, "status" | "cls" | "maxSeen">, d: Delta) {
     if (this.flares.has(f.id)) return;
-    const flare: FlareInternal = { ...f, status: "rising", cls: "A0.0", maxSeen: 0 };
+    const background = this.xray.at(-1)?.long ?? 1e-8;
+    const flare: FlareInternal = { ...f, status: "rising", cls: classFromFlux(background), maxSeen: background };
     this.flares.set(f.id, flare);
     (d.flares ??= []).push(publicFlare(flare));
   }

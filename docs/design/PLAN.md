@@ -2,14 +2,22 @@
 
 The plan follows [SCOPE.md](../SCOPE.md) and the designs in [backend/](backend/README.md) and [frontend/](frontend/README.md). Each phase ends with something running and deployed for free.
 
+**Order: frontend first, against a mock backend**, so usability can be tested before any backend exists. The phase numbers below describe *what* gets built; the order is:
+
 ```
-Phase 0  Setup ──► Phase 1  Live loop ──► Phase 2  Live UI ──► Phase 3  Physics ──► Phase 4  Alerts & replay ──► Phase 5  Harden
- (both)            (backend)              (frontend)           (both)                (both)                       (both)
+Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI parts) + usability tests ──► Phase 0 setup ──► Backend: Phase 1 → 3 → 4 ──► Phase 5
 ```
+
+## Done: contract + mock backend
+
+- [x] `packages/shared`: `LiveState`, `Delta`, WS messages (the protocol package is merged into `shared`)
+- [x] `packages/physics`: `dbm*`, `newell`, flare classes, locations (8 tests)
+- [x] `apps/mock`: same `/api/v1` + WS contract, replay of saved data, 5 scenarios, chaos faults, control page ([README](../../apps/mock/README.md), 7 tests)
+- [x] npm workspaces (pnpm is not installed; the layout is compatible)
 
 ## Phase 0: Setup
 
-- [ ] pnpm monorepo: `apps/worker`, `apps/web`, `packages/{shared,physics,protocol}`
+- [ ] Monorepo: `apps/worker`, `apps/web` next to the existing `apps/mock`, `packages/{shared,physics}`
 - [ ] Cloudflare account (free, no card) → `wrangler` login; Pages project linked to GitHub
 - [ ] Free NASA API key → Worker secret `NASA_API_KEY`
 - [ ] GitHub Actions: lint + test + `wrangler deploy` + Pages build on push to `main`
