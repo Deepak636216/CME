@@ -17,7 +17,7 @@ Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI pa
 
 ## Phase 0: Setup
 
-- [ ] Monorepo: `apps/worker`, `apps/web` next to the existing `apps/mock`, `packages/{shared,physics}`
+- [ ] Monorepo: `apps/worker` next to `apps/web` (scaffolded) and the existing `apps/mock`, `packages/{shared,physics}`
 - [ ] Cloudflare account (free, no card) → `wrangler` login; Pages project linked to GitHub
 - [ ] Free NASA API key → Worker secret `NASA_API_KEY`
 - [ ] GitHub Actions: lint + test + `wrangler deploy` + Pages build on push to `main`
@@ -35,7 +35,8 @@ Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI pa
 
 ## Phase 2: Frontend live view (UF1, UF2, UF8, UF9)
 
-- [ ] Vite + React + r3f scene: Sun, Mercury, Venus, Earth, L1 from astronomy-engine
+- [x] Vite + React app scaffold: routes, AppShell, dev proxy to the mock ([apps/web](../../apps/web/README.md))
+- [ ] r3f scene: Sun, Mercury, Venus, Earth, L1 from astronomy-engine
 - [ ] `useLiveStream`: snapshot/delta apply, `seq` gap → resync, backoff, polling fallback
 - [ ] Zustand slices + IndexedDB cache; ConnectionBadge and FreshnessBadge
 - [ ] XrayChart and WindPanel (uPlot, ≤ 1 Hz)
