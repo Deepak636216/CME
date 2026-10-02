@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  L1_DISTANCE_AU, eclipticLongitude, l1Position, orbitPath, planetPosition, positionsAt, type Vec3,
+  L1_DISTANCE_AU, earthAxes, eclipticLongitude, l1Position, orbitPath, planetPosition, positionsAt, subsolarPoint, type Vec3,
 } from "../src/lib/ephemeris.ts";
 
 const unix = (iso: string) => Date.parse(iso) / 1000;
@@ -64,4 +64,26 @@ test("L1 is 1.5 million km sunward of Earth, on the Sun–Earth line", () => {
   near(Math.hypot(...l1), Math.hypot(...earth) - L1_DISTANCE_AU, 1e-9, "on the line");
   near(eclipticLongitude(l1), eclipticLongitude(earth), 1e-9, "same direction");
   assert.deepEqual(l1Position([2, 0, 0]), [2 - L1_DISTANCE_AU, 0, 0]);
+});
+
+test("Earth's spin: the Sun is overhead where it should be (equinox and solstice)", () => {
+  // 20 Mar 2026 12:00 UTC: just before the equinox, equation of time ≈ −7.4 min → Sun overhead ≈ 1.85° E
+  const eq = subsolarPoint(unix("2026-03-20T12:00:00Z"));
+  near(eq.lat, -0.04, 0.1, "equinox latitude");
+  near(eq.lon, 1.85, 0.3, "equinox longitude");
+  // 21 Jun 2026 08:25 UTC, the solstice: overhead on the Tropic of Cancer, ≈ 54.2° E (equation of time ≈ −1.7 min)
+  const so = subsolarPoint(unix("2026-06-21T08:25:00Z"));
+  near(so.lat, 23.44, 0.05, "solstice latitude");
+  near(so.lon, 54.17, 0.3, "solstice longitude");
+});
+
+test("Earth's axes form a right-handed orthonormal frame, north tilted 23.44° from ecliptic north", () => {
+  const { x, y, z } = earthAxes(unix("2026-10-02T00:00:00Z"));
+  const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  for (const v of [x, y, z]) near(Math.hypot(...v), 1, 1e-9, "unit");
+  near(dot(x, y), 0, 1e-9, "x⊥y");
+  near(dot(y, z), 0, 1e-9, "y⊥z");
+  const cross: Vec3 = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+  near(dot(cross, z), 1, 1e-9, "right-handed");
+  near((Math.acos(y[1]) * 180) / Math.PI, 23.44, 0.02, "obliquity");
 });

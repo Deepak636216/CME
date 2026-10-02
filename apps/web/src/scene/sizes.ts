@@ -1,5 +1,6 @@
 import { PLANETS, R_SUN_AU, kmToAu, type PlanetId } from "../lib/ephemeris.ts";
 import { useUi } from "../store/ui.ts";
+import { reducedMotion } from "./motion.ts";
 
 export type BodyId = PlanetId | "sun";
 
@@ -16,7 +17,6 @@ export const TRUE_RADIUS: Record<BodyId, number> = {
   ...(Object.fromEntries(PLANETS.map((p) => [p.id, kmToAu(p.radiusKm)])) as Record<PlanetId, number>),
 };
 
-const reducedMotion = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * 0 = readable, 1 = true scale, eased over ~600 ms by ScaleDriver once per frame.

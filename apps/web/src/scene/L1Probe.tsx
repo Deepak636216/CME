@@ -23,7 +23,7 @@ export function L1Probe() {
     const gap = Math.max(d - Math.hypot(...p.l1), earthR * 1.8);
     const k = 1 - gap / d;
     g.position.set(ex * k, ey * k, ez * k);
-    mesh.current?.scale.setScalar(earthR * 0.25);
+    mesh.current?.scale.setScalar(earthR * 0.12);
   });
   return (
     <group ref={group} name="l1">

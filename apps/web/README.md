@@ -37,6 +37,8 @@ src/
   store/ui.ts              uiSlice: scale (saved), camera view
   lib/ephemeris.ts         Mercury, Venus, Earth, L1 positions (astronomy-engine, J2000 ecliptic, AU)
   scene/                   SceneCanvas (lazy chunk), SunMesh, PlanetBodies, OrbitLines, L1Probe, CameraRig
+  scene/materials.ts       shaders: Sun photosphere + corona, textured Earth + atmosphere, Venus, Mercury
+public/textures/           NASA Earth maps (384 kB WebP); see CREDITS.md
   hud/SceneControls.tsx    Readable / True scale toggle, Overview / Top / Earth camera
   hud/SceneFallback.tsx    no WebGL / scene failed: the same positions as a table (+ SceneBoundary)
 ```

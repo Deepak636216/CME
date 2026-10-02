@@ -12,14 +12,22 @@ export function sceneTime(): number {
 // Every component asks for positions in its own useFrame; compute them once per frame.
 let cacheKey = -1;
 let cache: Positions | null = null;
+let cacheT = 0;
 
 /** Body positions for the frame being drawn. `frameTime` is r3f's state.clock.elapsedTime (same within a frame). */
 export function framePositions(frameTime: number): Positions {
   if (frameTime !== cacheKey || !cache) {
-    cache = positionsAt(sceneTime());
+    cacheT = sceneTime();
+    cache = positionsAt(cacheT);
     cacheKey = frameTime;
   }
   return cache;
+}
+
+/** The scene time (unix s) that the current frame's positions were computed for. */
+export function frameSceneTime(frameTime: number): number {
+  framePositions(frameTime);
+  return cacheT;
 }
 
 /** Run `fn` every frame with this frame's positions. Never sets React state: no re-render per frame. */

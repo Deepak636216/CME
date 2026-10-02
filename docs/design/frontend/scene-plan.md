@@ -42,3 +42,18 @@ Headless Chromium renders WebGL in software, so frame rate measured here is mean
 - Found while checking 4b: the ConnectionBadge stayed on "Connecting…" at real-time speed, because the client only went live on the first message and a quiet server sends nothing for up to a minute. It now goes live when the socket opens.
 - 4c: camera presets are Overview, Top (true geometry, orbits as circles) and Earth (behind and beside Earth, looking sunward, following Earth along its orbit). At true scale a ring marks each planet and L1, since they are smaller than a pixel.
 - 4d, measured in headless Chromium: with the scene running, 5 React commits in 5 s (the 1 s age tickers) against 125 animation frames, so the 3D loop does not re-render React. WebGL off → text fallback with the same positions, and the scene chunk is never downloaded. Scene chunk blocked → error boundary shows the same fallback. On portrait screens the Overview and Top cameras pull back so Earth's orbit fits across.
+
+## Real surfaces (after the design review)
+
+From the design review (Look, P1): bodies are no longer flat colours. All shaders live in `apps/web/src/scene/materials.ts`.
+
+| Body | How | Download |
+|---|---|---|
+| Sun | Shader: limb darkening I(μ) = 1 − 0.6(1 − μ), Worley-noise granulation that slowly evolves, faculae near the limb, detail fades when the Sun is small on screen; camera-facing corona quad with 1/r² falloff and faint streamers | 0 |
+| Earth | NASA Blue Marble (day), Black Marble (city lights), cloud composite; lit by the real Sun direction, ocean glint, blue Fresnel rim and an atmosphere halo shell. Oriented from Greenwich sidereal time and precession/nutation (`earthAxes`), so the day/night line is the real one for the scene time | 384 kB WebP |
+| Venus | Shader: banded cream cloud deck, soft terminator | 0 |
+| Mercury | Shader: grey rock with Worley craters, hard terminator | 0 |
+
+- Earth draws as flat blue until its maps arrive, then fades in over 0.6 s; if they never arrive (offline) it stays flat. Credits: `apps/web/public/textures/CREDITS.md`.
+- Tests: the Sun is overhead at 1.85° E on 20 Mar 2026 12:00 UTC and at 23.44° N, 54.2° E at the June solstice (both within 0.3°); Earth's axes are orthonormal with a 23.44° tilt.
+- Measured after the change: 5 React commits in 5 s with the scene animating, as before.

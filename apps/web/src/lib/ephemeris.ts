@@ -1,4 +1,4 @@
-import { Body, HelioVector, RotateVector, Rotation_EQJ_ECL } from "astronomy-engine";
+import { Body, HelioVector, MakeTime, RotateVector, Rotation_EQD_ECL, Rotation_EQJ_ECL, SiderealTime, Vector } from "astronomy-engine";
 import { AU_KM, R_SUN_KM } from "@cme/physics";
 import type { Unix } from "@cme/shared";
 
@@ -81,4 +81,38 @@ export function eclipticLongitude([x, , z]: Vec3): number {
 
 export function kmToAu(km: number): number {
   return km / AU_KM;
+}
+
+/**
+ * Earth's orientation at time t: where the axes of a three.js Earth mesh point, in scene coordinates.
+ * A three.js SphereGeometry puts map longitude 0 on local +X, 90°E on local −Z and north on +Y, i.e. local
+ * = (x, z, −y) of the Earth-fixed frame, the same mapping as eclToScene. So: Earth-fixed → equator of date
+ * (turn by Greenwich apparent sidereal time) → J2000 ecliptic → scene. Polar motion (< 1″) is ignored.
+ */
+export function earthAxes(t: Unix): { x: Vec3; y: Vec3; z: Vec3 } {
+  const date = new Date(t * 1000);
+  const theta = (SiderealTime(date) * 15 * Math.PI) / 180;
+  const time = MakeTime(date);
+  const toEcl = Rotation_EQD_ECL(time);
+  const c = Math.cos(theta);
+  const s = Math.sin(theta);
+  const toScene = (x: number, y: number, z: number): Vec3 => {
+    const e = RotateVector(toEcl, new Vector(x * c - y * s, x * s + y * c, z, time));
+    return eclToScene(e.x, e.y, e.z);
+  };
+  // local X = Earth-fixed x (lon 0), local Y = z (north), local Z = −y (lon 90°W)
+  return { x: toScene(1, 0, 0), y: toScene(0, 0, 1), z: toScene(0, -1, 0) };
+}
+
+/** Latitude and longitude (degrees, east +) where the Sun is overhead at time t. */
+export function subsolarPoint(t: Unix): { lat: number; lon: number } {
+  const earth = planetPosition("earth", t);
+  const d = Math.hypot(...earth);
+  const sun: Vec3 = [-earth[0] / d, -earth[1] / d, -earth[2] / d];
+  const { x, y, z } = earthAxes(t);
+  const dot = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const fx = dot(sun, x);
+  const fy = -dot(sun, z);
+  const fz = dot(sun, y);
+  return { lat: (Math.asin(fz) * 180) / Math.PI, lon: (Math.atan2(fy, fx) * 180) / Math.PI };
 }
