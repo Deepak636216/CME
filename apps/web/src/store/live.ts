@@ -12,7 +12,7 @@ export interface Conn {
   status: ConnStatus;
   /** Where the data on screen last came from. */
   source: "none" | "cache" | "rest" | "ws";
-  /** Consecutive WebSocket attempts that ended before any message arrived. */
+  /** Consecutive WebSocket attempts that ended without ever opening. */
   failures: number;
   lastMessageAt: Unix | null; // wall clock, seconds
   gaps: number; // seq gaps detected since load

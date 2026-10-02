@@ -48,7 +48,7 @@ export class LiveStream {
     Pick<LiveStreamOptions, "cache" | "onAlert">;
   private ws: WebSocket | null = null;
   private stopped = true;
-  private gotMessage = false; // on the current socket
+  private opened = false; // the current socket connected
   private awaitingSnapshot = false;
   private dirty = false; // store changed since the last cache save
   private reconnectTimer: Timer | null = null;
@@ -128,7 +128,7 @@ export class LiveStream {
     const seq = this.o.store.getState().seq;
     const since = seq !== null && !this.awaitingSnapshot ? `?since=${seq}` : "";
     this.awaitingSnapshot = false;
-    this.gotMessage = false;
+    this.opened = false;
 
     let ws: WebSocket;
     try {
@@ -138,6 +138,8 @@ export class LiveStream {
       return;
     }
     this.ws = ws;
+    // Live as soon as the socket opens: a quiet server (real-time speed) may not send anything for a minute.
+    ws.onopen = () => this.ws === ws && this.markOpen();
     ws.onmessage = (ev) => this.onMessage(ev.data);
     // Either event ends this socket, once. Browsers send close after error, Node's WebSocket may not;
     // never call ws.close() from onerror (it can re-fire error).
@@ -157,13 +159,16 @@ export class LiveStream {
     if (!isServerMessage(m)) return;
 
     this.armSilence();
-    if (!this.gotMessage) {
-      this.gotMessage = true;
-      this.stopPolling();
-      this.setConn({ status: "live", source: "ws", failures: 0 });
-    }
+    this.markOpen();
     this.setConn({ lastMessageAt: Date.now() / 1000 });
     this.handle(m);
+  }
+
+  private markOpen(): void {
+    if (this.opened) return;
+    this.opened = true;
+    this.stopPolling();
+    this.setConn({ status: "live", failures: 0 });
   }
 
   private handle(m: ServerMessage): void {
@@ -189,6 +194,7 @@ export class LiveStream {
       this.requestResync();
       return;
     }
+    if (store.getState().conn.source !== "ws") this.setConn({ source: "ws" });
     if (m.type === "delta") applyDelta(store, m.seq, m.data);
     else {
       applyAlert(store, m.seq, m.data);
@@ -218,7 +224,7 @@ export class LiveStream {
     }
     if (this.stopped) return;
 
-    const failures = this.gotMessage ? 1 : this.o.store.getState().conn.failures + 1;
+    const failures = this.opened ? 1 : this.o.store.getState().conn.failures + 1;
     this.setConn({ failures, status: this.pollTimer ? "polling" : "reconnecting" });
     if (failures >= this.o.pollAfterFailures) this.startPolling();
 
@@ -245,7 +251,7 @@ export class LiveStream {
     const ws = this.ws;
     this.ws = null;
     if (!ws) return;
-    ws.onmessage = ws.onclose = ws.onerror = null;
+    ws.onopen = ws.onmessage = ws.onclose = ws.onerror = null;
     ws.close();
   }
 
@@ -278,7 +284,7 @@ export class LiveStream {
       const s = (await res.json()) as LiveState;
       if (this.stopped || ctrl.signal.aborted) return;
       const cur = this.o.store.getState().seq;
-      if (this.gotMessage && cur !== null && s.seq <= cur) return; // the socket is already ahead
+      if (this.opened && cur !== null && s.seq <= cur) return; // the socket is already ahead
       applySnapshot(this.o.store, s, "rest");
       this.dirty = true;
     } catch {

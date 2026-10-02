@@ -67,3 +67,21 @@ table.kv th { width: 160px; }
   .topbar nav { order: 3; width: 100%; flex-wrap: nowrap; overflow-x: auto; }
   .badge { max-width: 180px; }
 }
+
+/* Live page: the scene fills the space under the top bar; HUD overlays it */
+.page:has(.live) { padding: 0; position: relative; }
+.live { position: absolute; inset: 0; }
+.scene { position: absolute; inset: 0; }
+.scene-canvas { touch-action: none; }
+.scene-loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; }
+.hud {
+  position: absolute; left: 16px; bottom: 16px; max-width: min(360px, calc(100% - 32px));
+  padding: 8px 12px; background: color-mix(in srgb, var(--panel) 85%, transparent);
+  border: 1px solid var(--line); border-radius: 8px; font-size: 0.85rem;
+}
+.scene-label.left { transform: translate(calc(-100% - 10px), -50%); text-align: right; }
+.scene-label {
+  transform: translate(10px, -50%); white-space: nowrap; font-size: 12px; color: var(--text);
+  text-shadow: 0 0 4px #000, 0 0 2px #000; user-select: none;
+}
+.scene-label small { display: block; color: var(--muted); font-size: 10px; }

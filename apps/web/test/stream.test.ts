@@ -169,3 +169,12 @@ test("a silent socket (half-open connection) is dropped and replaced", async () 
   await waitFor("live", caughtUp(store));
   stream.stop();
 });
+
+test("the badge goes live when the socket opens, even if the server is quiet", async () => {
+  const { store, stream } = open();
+  await chaos({ latencyMs: 3000 }); // like real-time speed: nothing for a while after connecting
+  await stream.start();
+  await waitFor("live before any message", () => store.getState().conn.status === "live", 2000);
+  assert.equal(store.getState().conn.lastMessageAt, null);
+  assert.equal(store.getState().conn.source, "rest");
+});
