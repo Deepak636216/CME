@@ -36,3 +36,6 @@ th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--lin
 th { color: var(--muted); font-weight: 500; }
 td.ok { color: var(--ok); }
 td.stale { color: var(--warn); }
+h2 { margin-top: 28px; font-size: 1.1rem; }
+table.kv { max-width: 480px; }
+table.kv th { width: 160px; }

@@ -7,14 +7,17 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -p . && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "tsx --test --test-timeout=60000 test/*.test.ts"
   },
   "dependencies": {
     "@cme/physics": "*",
     "@cme/shared": "*",
+    "idb-keyval": "^6.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router": "^7.18.4"
+    "react-router": "^7.18.4",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@types/react": "^18.3.31",

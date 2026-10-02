@@ -14,6 +14,7 @@ The browser only calls same-origin `/api/v1/*`. In dev, Vite proxies REST and th
 |---|---|
 | `npm run web` | Dev server with hot reload |
 | `npm run build:web` | Typecheck + production build into `apps/web/dist/` |
+| `npm test -w @cme/web` | Unit tests + stream tests against an in-process mock (~15 s) |
 | `npm run typecheck` | All packages, this app included |
 
 ## Layout
@@ -23,15 +24,35 @@ src/
   main.tsx, router.tsx     routes: / /sun /replay /events /events/:kind/:id /status
   shell/                   AppShell, TopBar (ConnectionBadge, AlertToaster… next)
   pages/                   one file per route; most are placeholders until their phase
+  store/live.ts            Zustand live store: seq, clock, series, lists, connection state
+  stream/client.ts         LiveStream: boot, seq check + resync, reconnect, polling fallback
+  stream/apply.ts          applySnapshot / applyDelta (pure, unit-tested)
+  stream/useLiveStream.ts  starts the stream in AppShell; reconnects on `online` / tab visible
+  lib/series.ts            ColumnSeries: capped Float64Array time series, copy-free views for charts
+  lib/localCache.ts        IndexedDB copy of the last state
   lib/api.ts               getJson(), serverNow() (data time comes from the server clock)
 ```
 
-Still to come (folders are created when their first file lands): `stream/` (useLiveStream), `store/` (Zustand), `scene/` (r3f), `hud/` (uPlot charts).
+Still to come: `scene/` (r3f), `hud/` (uPlot charts).
+
+## How the live stream behaves
+
+| Situation | What the client does |
+|---|---|
+| Page load | Paints the IndexedDB copy, then `GET /state`, then opens `WS /stream?since=<seq>` |
+| Next message has `seq + 1` | Applies it (series appended, lists upserted by id, regions replaced) |
+| `seq` jumps (a message was lost) | Sends `{"type":"resync"}` and ignores messages until the snapshot; reconnects fresh if none comes in 10 s |
+| Socket closes | Reconnects after 0.25–0.5 s, doubling to 30 s max, resuming with `?since=` so nothing is missed |
+| 3 failed attempts in a row | Also polls `GET /state` every 30 s until the socket is back |
+| No message for 40 s (pings come every 15 s) | Treats the socket as dead and reconnects |
+| Cached seq | Never used to resume: it may come from another server run |
+
+Try it: open `/status` and use the mock's control page (http://localhost:8787/mock/ui) to inject faults.
 
 ## Status
 
 - [x] Step 1: scaffold, routes, dev proxy to the mock, `/status` page reading `GET /api/v1/health`
-- [ ] Step 2: Zustand store + `useLiveStream`
+- [x] Step 2: Zustand store + `useLiveStream` + IndexedDB cache; `/status` reads the live store
 - [ ] Step 3: ConnectionBadge + FreshnessBadge
 - [ ] Step 4: 3D scene (Sun, Mercury, Venus, Earth, L1)
 - [ ] Step 5: XrayChart + WindPanel

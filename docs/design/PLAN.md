@@ -37,8 +37,9 @@ Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI pa
 
 - [x] Vite + React app scaffold: routes, AppShell, dev proxy to the mock ([apps/web](../../apps/web/README.md))
 - [ ] r3f scene: Sun, Mercury, Venus, Earth, L1 from astronomy-engine
-- [ ] `useLiveStream`: snapshot/delta apply, `seq` gap → resync, backoff, polling fallback
-- [ ] Zustand slices + IndexedDB cache; ConnectionBadge and FreshnessBadge
+- [x] `useLiveStream`: snapshot/delta apply, `seq` gap → resync, backoff, polling fallback (tested against the mock's chaos modes)
+- [x] Zustand live store (Float64Array series, 7 days) + IndexedDB cache
+- [ ] ConnectionBadge and FreshnessBadge
 - [ ] XrayChart and WindPanel (uPlot, ≤ 1 Hz)
 - **Done when:** a cold load is interactive in < 2 s and runs at 60 fps; pulling the network cable and reconnecting catches up with no reload.
 

@@ -1,44 +1,29 @@
 import { useEffect, useState } from "react";
-import type { HealthResponse, Unix } from "@cme/shared";
-import { getJson, serverNow } from "../lib/api.ts";
+import { serverNow } from "../lib/api.ts";
+import { useLive } from "../store/live.ts";
 
-/** Feed health from GET /api/v1/health. Polled for now; it moves onto the live stream in Phase 2. */
+/** Feed health and stream diagnostics, read from the live store (kept current by the WebSocket). */
 export function StatusPage() {
-  const [health, setHealth] = useState<{ data: HealthResponse; receivedAt: Unix } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [, tick] = useState(0);
+  const clock = useLive((s) => s.clock);
+  const clockAt = useLive((s) => s.clockAt);
+  const feeds = useLive((s) => s.feeds);
+  const seq = useLive((s) => s.seq);
+  const conn = useLive((s) => s.conn);
+  useLive((s) => s.seriesRev); // re-render when points arrive
+  const xrayLen = useLive((s) => s.xray.length);
+  const windLen = useLive((s) => s.wind.length);
+  useSecondTick();
 
-  useEffect(() => {
-    const ctrl = new AbortController();
-    const load = () =>
-      getJson<HealthResponse>("/health", ctrl.signal)
-        .then((data) => {
-          setHealth({ data, receivedAt: Date.now() / 1000 });
-          setError(null);
-        })
-        .catch((e: Error) => e.name !== "AbortError" && setError(e.message));
-    load();
-    const poll = setInterval(load, 10_000);
-    const clock = setInterval(() => tick((n) => n + 1), 1000);
-    return () => {
-      ctrl.abort();
-      clearInterval(poll);
-      clearInterval(clock);
-    };
-  }, []);
+  if (!clock) return <p className="muted">Connecting… ({conn.status})</p>;
 
-  if (error && !health) return <p className="error">Backend unreachable: {error}. Is `npm run mock` running?</p>;
-  if (!health) return <p className="muted">Loading…</p>;
-
-  const { clock, feeds } = health.data;
-  const now = serverNow(clock, health.receivedAt);
+  const now = serverNow(clock, clockAt);
+  const wall = Date.now() / 1000;
   return (
     <section>
       <h1>Feed status</h1>
       <p className="muted">
         Server time {new Date(now * 1000).toISOString().slice(0, 19)}Z · mode {clock.mode}
         {clock.scenario ? ` · scenario ${clock.scenario}` : ""} · speed ×{clock.speed}
-        {error ? ` · last refresh failed: ${error}` : ""}
       </p>
       <table>
         <thead>
@@ -60,8 +45,53 @@ export function StatusPage() {
           ))}
         </tbody>
       </table>
+
+      <h2>Stream</h2>
+      <table className="kv">
+        <tbody>
+          <tr>
+            <th>Connection</th>
+            <td className={conn.status === "live" ? "ok" : "stale"}>
+              {conn.status}
+              {conn.failures ? ` (${conn.failures} failed attempts)` : ""}
+            </td>
+          </tr>
+          <tr>
+            <th>Data from</th>
+            <td>{conn.source}</td>
+          </tr>
+          <tr>
+            <th>Seq</th>
+            <td>{seq ?? "—"}</td>
+          </tr>
+          <tr>
+            <th>Last message</th>
+            <td>{conn.lastMessageAt ? `${formatAge(wall - conn.lastMessageAt)} ago` : "—"}</td>
+          </tr>
+          <tr>
+            <th>Gaps / resyncs</th>
+            <td>
+              {conn.gaps} / {conn.resyncs}
+            </td>
+          </tr>
+          <tr>
+            <th>Points held</th>
+            <td>
+              {xrayLen} X-ray · {windLen} wind
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </section>
   );
+}
+
+function useSecondTick() {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
 }
 
 function formatAge(s: number): string {

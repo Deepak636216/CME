@@ -7,7 +7,7 @@
     "mock": "npm run dev -w @cme/mock --",
     "web": "npm run dev -w @cme/web",
     "build:web": "npm run build -w @cme/web",
-    "test": "npm test -w @cme/physics -w @cme/mock",
+    "test": "npm test -w @cme/physics -w @cme/mock -w @cme/web",
     "typecheck": "tsc -p packages/shared && tsc -p packages/physics && tsc -p apps/mock && tsc -p apps/web",
     "start": "python server.py 8000",
     "snapshot": "python docs/reconnection/scripts/build_snapshot.py",
