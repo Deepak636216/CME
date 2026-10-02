@@ -40,6 +40,10 @@ src/
   scene/materials.ts       shaders: Sun photosphere + corona, textured Earth + atmosphere, Venus, Mercury
 public/textures/           NASA Earth maps (384 kB WebP); see CREDITS.md
   hud/SceneControls.tsx    Readable / True scale toggle, Overview / Top / Earth camera
+  hud/SceneClock.tsx       UTC clock with LIVE / DELAYED / SAVED and a note when time isn't real
+  hud/SceneKey.tsx         what each mark means; scale note; NASA credit
+  scene/SunEarthLine.tsx   Sun–Earth line with light and live solar-wind travel times
+  lib/travel.ts            light and wind travel times, duration and clock formatting
   hud/SceneFallback.tsx    no WebGL / scene failed: the same positions as a table (+ SceneBoundary)
 ```
 

@@ -57,3 +57,13 @@ From the design review (Look, P1): bodies are no longer flat colours. All shader
 - Earth draws as flat blue until its maps arrive, then fades in over 0.6 s; if they never arrive (offline) it stays flat. Credits: `apps/web/public/textures/CREDITS.md`.
 - Tests: the Sun is overhead at 1.85° E on 20 Mar 2026 12:00 UTC and at 23.44° N, 54.2° E at the June solstice (both within 0.3°); Earth's axes are orthonormal with a 23.44° tilt.
 - Measured after the change: 5 React commits in 5 s with the scene animating, as before.
+
+## Context on screen (after the design review)
+
+From the design review (Understand, P1):
+
+- **Clock** (`hud/SceneClock.tsx`): the moment being drawn, in UTC, with LIVE / DELAYED / SAVED, and a note whenever time isn't real (mock data, a scenario, a speed other than ×1).
+- **Sun–Earth line** (`scene/SunEarthLine.tsx`): dashed, labelled with sunlight time (8 min 19 s at 1 AU) and solar-wind time at the speed measured at L1 right now (e.g. ~5.2 days at 334 km/s; "400 km/s (typical)" before any data). The L1 label adds how far ahead of Earth the wind measured there is (~1 h).
+- **Key** (`hud/SceneKey.tsx`): what each mark means, how much sizes are enlarged (Earth ×376, Sun ×13) or that they are true, and the NASA credit. Open on a first desktop visit, closed on phones, then remembered.
+- **Decluttering** (`scene/declutter.ts`): labels hide when they would collide, judged by on-screen distance (L1 next to Earth; the callout when the line is short). The callout sits at the line's on-screen midpoint, so perspective can't push it onto the Sun.
+- Text in the scene is written from the render loop straight into the DOM, so all of this costs no React re-renders (still ~1 commit/s).
