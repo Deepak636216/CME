@@ -6,6 +6,7 @@ import { drawnRadius } from "./sizes.ts";
 import { createCoronaMaterial, createSunMaterial } from "./materials.ts";
 import { reducedMotion } from "./motion.ts";
 import { Label } from "./Labels.tsx";
+import { SunActivity } from "./SunActivity.tsx";
 
 /**
  * The Sun at the origin: a photosphere shader (limb darkening, granulation, faculae) and a corona glow.
@@ -52,6 +53,7 @@ export function SunMesh() {
       <group ref={label}>
         <Label text="Sun" />
       </group>
+      <SunActivity surface={surface} corona={corona} sunGroup={group} />
     </group>
   );
 }

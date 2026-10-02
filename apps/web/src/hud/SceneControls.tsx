@@ -7,6 +7,7 @@ const SCALES: { id: Scale; label: string; hint: string }[] = [
 const VIEWS: { id: View; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "top", label: "Top" },
+  { id: "sun", label: "Sun" },
   { id: "earth", label: "Earth" },
 ];
 

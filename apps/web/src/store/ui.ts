@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 export type Scale = "readable" | "true";
-export type View = "overview" | "top" | "earth";
+export type View = "overview" | "top" | "sun" | "earth";
 
 /**
  * The uiSlice from docs/design/frontend section 2: written only by user input.

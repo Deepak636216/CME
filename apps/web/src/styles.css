@@ -236,10 +236,18 @@ table.kv th { width: 160px; }
   .wide-only { display: none; }
   .hud-legend { gap: 12px; }
   .scene-clock {
-    top: 56px; gap: 2px 8px; padding: 5px 10px; font-size: 0.8rem;
+    top: 100px; gap: 2px 8px; padding: 5px 10px; font-size: 0.8rem;
     max-width: calc(100% - 16px); box-sizing: border-box; flex-wrap: wrap; justify-content: center;
     white-space: normal; border-radius: 12px;
   }
   .scene-key, .scene-key-toggle { top: auto; bottom: calc(var(--hud-h) + 20px); left: 8px; }
   .scene-key { width: min(300px, calc(100% - 16px)); }
 }
+
+.sw-spot { height: 12px; width: 12px; margin: 0 1px; border-radius: 50%; background: radial-gradient(circle, #2a1205 0 32%, #8a4a18 38% 62%, #ffb53d 68%); }
+.sw-flare { height: 14px; border-radius: 50%; background: radial-gradient(circle, #ffffff 0 20%, rgba(255, 235, 200, 0.7) 40%, rgba(255, 200, 120, 0) 70%); }
+.region-label span { color: #ffe2b0; }
+.flare-label span { color: #ffffff; font-weight: 600; }
+.flare-label small { color: #ffe2b0; }
+.region-label, .flare-label { background: rgba(5, 7, 12, 0.62); padding: 2px 6px; border-radius: 4px; }
+.region-label small, .flare-label small { color: #d6c3a0; }

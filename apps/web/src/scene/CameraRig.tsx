@@ -5,7 +5,7 @@ import { Vector3 } from "three";
 import type { Positions } from "../lib/ephemeris.ts";
 import { useUi, type Scale, type View } from "../store/ui.ts";
 import { framePositions } from "./time.ts";
-import { stepScale } from "./sizes.ts";
+import { drawnRadius, stepScale } from "./sizes.ts";
 
 type Controls = ElementRef<typeof OrbitControls>;
 const DURATION_S = 0.9;
@@ -15,6 +15,15 @@ function preset(view: View, scale: Scale, p: Positions, aspect: number): { pos: 
   // Overview and Top frame Earth's orbit; a portrait screen is narrow, so pull back until it fits across.
   const fit = Math.max(1, 1.6 / aspect);
   if (view === "top") return { pos: new Vector3(0, 2.7 * fit, 0.0001), target: new Vector3() };
+  if (view === "sun") {
+    // From Earth's side, close enough for the disc to fill much of the view: the face we see from Earth,
+    // where the sunspots and flares are.
+    const toEarth = new Vector3(...p.earth).normalize();
+    const d = drawnRadius("sun") * (aspect < 1 ? 7 : 4.6);
+    // aim a little below centre so the disc sits above the data panels along the bottom
+    const below = new Vector3(0, -drawnRadius("sun") * 0.42, 0);
+    return { pos: toEarth.multiplyScalar(d).add(new Vector3(0, d * 0.12, 0)).add(below), target: below };
+  }
   if (view === "earth") {
     // Behind Earth, off to the side and a little above the ecliptic, looking back at the Sun: the way a CME
     // would arrive. The side offset keeps part of Earth's day side in view.

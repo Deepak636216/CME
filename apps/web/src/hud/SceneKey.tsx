@@ -33,6 +33,14 @@ export function SceneKey() {
           Sun, at the centre
         </li>
         <li>
+          <span className="sw sw-spot" aria-hidden />
+          Sunspot group (NOAA region), sized by its area
+        </li>
+        <li>
+          <span className="sw sw-flare" aria-hidden />
+          Flare: pulses while rising, fades after it ends
+        </li>
+        <li>
           <span className="sw sw-planet" aria-hidden />
           Planet where it is right now; lit side faces the Sun
         </li>

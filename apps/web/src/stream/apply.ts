@@ -23,6 +23,7 @@ export function applySnapshot(store: LiveStore, s: LiveState, source: Conn["sour
       : { clock: s.clock, clockAt: wallNow() }),
     seriesRev: cur.seriesRev + 1,
     regions: s.regions,
+    regionsAt: s.clock.now,
     flares: s.flares,
     cmes: s.cmes,
     alerts: s.alerts,
@@ -43,7 +44,10 @@ export function applyDelta(store: LiveStore, seq: number, d: Delta): void {
   if (d.xray) grew += cur.xray.append(d.xray);
   if (d.wind) grew += cur.wind.append(d.wind);
   if (grew) next.seriesRev = cur.seriesRev + 1;
-  if (d.regions) next.regions = d.regions;
+  if (d.regions) {
+    next.regions = d.regions;
+    next.regionsAt = (d.clock ?? cur.clock)?.now ?? cur.regionsAt;
+  }
   if (d.feeds) next.feeds = upsert(cur.feeds, d.feeds);
 
   const now = (d.clock ?? cur.clock)?.now;

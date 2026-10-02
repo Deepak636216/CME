@@ -34,6 +34,8 @@ export interface LiveData {
   wind: ColumnSeries<(typeof WIND_KEYS)[number]>;
   seriesRev: number;
   regions: SunspotRegion[];
+  /** Server time the regions' longitudes refer to (they are rotated forward from here while drawing). */
+  regionsAt: Unix;
   flares: Flare[];
   cmes: Cme[];
   alerts: Alert[];
@@ -52,6 +54,7 @@ export function createLiveStore(): LiveStore {
     wind: new ColumnSeries(WIND_KEYS),
     seriesRev: 0,
     regions: [],
+    regionsAt: 0,
     flares: [],
     cmes: [],
     alerts: [],

@@ -67,3 +67,11 @@ From the design review (Understand, P1):
 - **Key** (`hud/SceneKey.tsx`): what each mark means, how much sizes are enlarged (Earth ×376, Sun ×13) or that they are true, and the NASA credit. Open on a first desktop visit, closed on phones, then remembered.
 - **Decluttering** (`scene/declutter.ts`): labels hide when they would collide, judged by on-screen distance (L1 next to Earth; the callout when the line is short). The callout sits at the line's on-screen midpoint, so perspective can't push it onto the Sun.
 - Text in the scene is written from the render loop straight into the DOM, so all of this costs no React re-renders (still ~1 commit/s).
+
+## Phase 3: what's on the Sun
+
+- **Sunspot groups** (`scene/SunActivity.tsx`, `lib/sunActivity.ts`): each NOAA region is drawn inside the photosphere shader at its heliographic lat/lon (+Z faces Earth, +X west, +Y north): dark umbra, filamented penumbra with a ragged edge, faculae around it that stand out toward the limb. Angular radius from area: r/R = √(2·area·10⁻⁶) (820 MSH ≈ 2.3°), ×1.6 at readable scale. Longitudes rotate forward at 13.2°/day from when the server sent them, so spots glide toward the west limb and slide off it.
+- **Flares**: located flares that are under way or ended < 30 min ago get a white-hot kernel in the shader plus a camera-facing glow (visible even when the Sun is small), both pulsing while rising and fading after the end. Strength is log-scaled by class (C1 0.25, M1 0.5, X1 0.75). Flares without a position (the mock's replayed GOES list) can't be placed; they still show in the X-ray chart and as corona brightening, which follows the live X-ray flux.
+- **Labels**: one priority pass (the flare first, then regions biggest first); a label that would overlap one already placed is hidden, and the flaring region's own label gives way to the flare label. Region labels need the Sun ≥ 115 px in radius on screen; the flare label ≥ 40 px.
+- **Sun camera view**: from Earth's side, aimed a little below centre so the disc sits above the data panels.
+- Not modelled: the B0 and P tilts of the solar axis as seen from Earth (up to 7° and 26°).

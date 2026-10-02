@@ -1,4 +1,7 @@
-import { AdditiveBlending, BackSide, Color, ShaderMaterial, Vector3, type Texture } from "three";
+import { AdditiveBlending, BackSide, Color, ShaderMaterial, Vector3, Vector4, type Texture } from "three";
+
+export const MAX_SPOTS = 24;
+export const MAX_FLARES = 4;
 
 /**
  * Hand-written shaders for the bodies (design review board 2). All of them include three's
@@ -54,12 +57,23 @@ void main() {
  */
 export function createSunMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uTime: { value: 0 } },
+    uniforms: {
+      uTime: { value: 0 },
+      // sunspot groups: xyz = direction in the Sun's frame (+Z Earth, +Y north, +X west), w = angular radius
+      uSpots: { value: Array.from({ length: MAX_SPOTS }, () => new Vector4()) },
+      uSpotCount: { value: 0 },
+      // flares: xyz = direction, w = strength 0…1 (already pulsed)
+      uFlares: { value: Array.from({ length: MAX_FLARES }, () => new Vector4()) },
+      uFlareCount: { value: 0 },
+    },
+    defines: { MAX_SPOTS, MAX_FLARES },
     vertexShader: VERT_SURFACE,
     fragmentShader: /* glsl */ `
 #include <common>
 #include <logdepthbuf_pars_fragment>
 uniform float uTime;
+uniform vec4 uSpots[MAX_SPOTS]; uniform int uSpotCount;
+uniform vec4 uFlares[MAX_FLARES]; uniform int uFlareCount;
 varying vec3 vObj; varying vec3 vNormalW; varying vec3 vPosW;
 ${NOISE}
 void main() {
@@ -69,10 +83,10 @@ void main() {
   float mu = clamp(dot(N, V), 0.0, 1.0);
   float limb = 1.0 - 0.6 * (1.0 - mu);
 
-  vec3 gp = vObj * 26.0;
+  vec3 gp = vObj * 60.0;                               // fine cells: a texture, not pebbles, even up close
   float detail = 1.0 - smoothstep(0.25, 0.9, length(fwidth(gp)));
   float cells = detail > 0.01 ? worley(gp + vec3(0.0, uTime * 0.020, uTime * 0.013)) : 0.5;
-  float granulation = mix(1.0, 1.08 - 0.32 * smoothstep(0.05, 0.85, cells), detail);
+  float granulation = mix(1.0, 1.05 - 0.2 * smoothstep(0.05, 0.85, cells), detail);
   float big = fbm(vObj * 3.5 + vec3(uTime * 0.004));
   float faculae = smoothstep(0.58, 0.74, big) * pow(1.0 - mu, 1.5) * detail;
 
@@ -83,6 +97,36 @@ void main() {
   vec3 col = mu > 0.45 ? mix(mid, core, smoothstep(0.45, 1.0, mu)) : mix(edge, mid, smoothstep(0.0, 0.45, mu));
   col *= max(limb, 0.55) * 1.12 * granulation * (0.94 + 0.12 * big);
   col += vec3(1.0, 0.85, 0.6) * faculae * 0.15;
+
+  // Sunspot groups (NOAA regions): dark umbra inside a lighter, filamented penumbra with a ragged edge,
+  // and bright faculae (plage) around them that stand out toward the limb.
+  vec3 n = normalize(vObj);
+  float shade = 1.0;
+  float plage = 0.0;
+  for (int i = 0; i < MAX_SPOTS; i++) {
+    if (i >= uSpotCount) break;
+    vec4 sp = uSpots[i];
+    float d = acos(clamp(dot(n, sp.xyz), -1.0, 1.0));
+    float aa = fwidth(d) * 1.5 + 1e-5;
+    float rag = 1.0 + 0.22 * (vnoise(n * 55.0 + float(i) * 7.13) - 0.5);
+    float R = sp.w * rag;
+    float pen = 1.0 - smoothstep(R - aa, R + aa, d);
+    float umb = 1.0 - smoothstep(R * 0.42 - aa, R * 0.42 + aa, d);
+    float fil = 0.82 + 0.36 * vnoise(n * 140.0 + float(i));
+    shade = min(shade, mix(mix(1.0, 0.5 * fil, pen), 0.15, umb));
+    plage = max(plage, smoothstep(R * 3.2, R * 1.15, d) * (1.0 - pen));
+  }
+  col *= shade;
+  col += vec3(1.0, 0.88, 0.65) * plage * (0.05 + 0.3 * pow(1.0 - mu, 1.5));
+
+  // Flares: a white-hot kernel where the energy is released (values above 1 clip to white on purpose).
+  for (int i = 0; i < MAX_FLARES; i++) {
+    if (i >= uFlareCount) break;
+    vec4 f = uFlares[i];
+    float d = acos(clamp(dot(n, f.xyz), -1.0, 1.0));
+    float k = exp(-pow(d / (0.025 + 0.05 * f.w), 2.0));
+    col += vec3(1.0, 0.97, 0.9) * k * f.w * 1.8;
+  }
   gl_FragColor = vec4(col, 1.0);
 }
 `,
@@ -95,7 +139,7 @@ void main() {
  */
 export function createCoronaMaterial(): ShaderMaterial {
   return new ShaderMaterial({
-    uniforms: { uTime: { value: 0 } },
+    uniforms: { uTime: { value: 0 }, uActivity: { value: 0 } },
     transparent: true,
     depthWrite: false,
     blending: AdditiveBlending,
@@ -116,6 +160,7 @@ void main() {
 #include <common>
 #include <logdepthbuf_pars_fragment>
 uniform float uTime;
+uniform float uActivity; // 0 quiet … 1 major flare (from the live X-ray flux)
 varying vec2 vXY;
 ${NOISE}
 void main() {
@@ -126,7 +171,9 @@ void main() {
   float streamers = 0.75 + 0.5 * fbm(vec3(cos(a) * 2.5, sin(a) * 2.5, r * 0.6 - uTime * 0.01));
   float glow = 0.55 / (r * r) - 0.55 / 16.0;          // 1/r², zero at the quad's edge (r = 4)
   glow *= smoothstep(0.98, 1.0, r) * streamers;
-  gl_FragColor = vec4(vec3(1.0, 0.62, 0.25) * max(glow, 0.0), 1.0);
+  glow *= 0.85 + 0.9 * uActivity;
+  vec3 tint = mix(vec3(1.0, 0.62, 0.25), vec3(1.0, 0.85, 0.65), uActivity);
+  gl_FragColor = vec4(tint * max(glow, 0.0), 1.0);
 }
 `,
   });
@@ -257,6 +304,44 @@ void main() {
   gl_FragColor = vec4(col, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
+}
+`,
+  });
+}
+
+/** A flare's glow seen from afar: a camera-facing additive spot, sized and brightened by flare strength. */
+export function createFlareGlowMaterial(): ShaderMaterial {
+  return new ShaderMaterial({
+    uniforms: { uStrength: { value: 0 } },
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    vertexShader: /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_vertex>
+uniform float uStrength;
+varying vec2 vXY;
+void main() {
+  vXY = position.xy * 2.0;                             // −1…1 across the quad
+  float r = length(modelMatrix[0].xyz);                // world radius of the Sun (parent scale)
+  vec4 mv = modelViewMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+  mv.xy += position.xy * r * (0.35 + 0.9 * uStrength);
+  gl_Position = projectionMatrix * mv;
+  #include <logdepthbuf_vertex>
+}
+`,
+    fragmentShader: /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform float uStrength;
+varying vec2 vXY;
+void main() {
+  #include <logdepthbuf_fragment>
+  float d = length(vXY);
+  float core = exp(-d * d * 18.0);
+  float halo = exp(-d * d * 4.0) * 0.45;
+  float a = (core + halo) * (0.35 + 0.9 * uStrength) * (1.0 - smoothstep(0.85, 1.0, d));
+  gl_FragColor = vec4(vec3(1.0, 0.93, 0.8) * a, 1.0);
 }
 `,
   });

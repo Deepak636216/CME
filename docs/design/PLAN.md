@@ -49,7 +49,7 @@ Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI pa
 - [ ] Backend: `solar_regions.json`, flare list, DONKI pollers → `sunspot_region`, `flare`, `cme`
 - [ ] `packages/physics`: `dbm()`, `newell()`, `classFromFlux()` with unit tests (reuse the formulas in [research-notes.md](../research-notes.md))
 - [ ] Backend writes `cme_forecast`; frontend animates `CmeShells` per frame from the same `dbm()`
-- [ ] SunspotLayer + FlareMarkers placed on the Sun by lat/lon
+- [x] SunspotLayer + FlareMarkers placed on the Sun by lat/lon (frontend; drawn in the photosphere shader, rotating 13.2°/day; Sun camera view)
 - **Done when:** a past CME from DONKI replays to Earth with an ETA matching the DBM test values.
 
 ## Phase 4: Alerts & replay (UC3, UC7, UF6, UF7)
