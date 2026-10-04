@@ -6,6 +6,8 @@ import { peak, rowAt, tableRows, windowed, type Aligned } from "../../lib/chartD
 import { fmtFlux, pow10 } from "../../lib/format.ts";
 import { liveStore } from "../../store/live.ts";
 import { DataAge } from "../DataAge.tsx";
+import { MinButton } from "../MinButton.tsx";
+import { useUi } from "../../store/ui.ts";
 import { CHART } from "./theme.ts";
 import { SYNC_KEY, useHover } from "./hover.ts";
 import { hhmm, useUplot, utc } from "./useUplot.ts";
@@ -122,6 +124,7 @@ function options(width: number, height: number, onCursor: (u: uPlot) => void): u
  */
 export function XrayChart({ now }: { now: number }) {
   const [table, setTable] = useState(false);
+  const minimized = useUi((st) => st.minimized.xray);
   const active = useRef(false);
   const hoverT = useHover((s) => s.t);
   const setHover = useHover((s) => s.set);
@@ -192,7 +195,7 @@ export function XrayChart({ now }: { now: number }) {
   })();
 
   return (
-    <section className="hud-panel" aria-labelledby="xray-title">
+    <section className="hud-panel" aria-labelledby="xray-title" data-min={minimized}>
       <header className="hud-head">
         <div className="hud-title">
           <h2 id="xray-title">Solar X-rays</h2>
@@ -208,6 +211,7 @@ export function XrayChart({ now }: { now: number }) {
         <button className="hud-btn" aria-pressed={table} onClick={() => setTable(!table)}>
           {table ? "Chart" : "Table"}
         </button>
+        <MinButton panel="xray" label="X-ray panel" />
       </header>
       <div className="hud-legend" aria-hidden={table}>
         <span><span className="key" style={{ background: CHART.series1 }} />Long<span className="wide-only"> 0.1–0.8 nm</span>, sets the flare class</span>

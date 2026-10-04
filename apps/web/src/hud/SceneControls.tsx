@@ -15,7 +15,8 @@ const VIEWS: { id: View; label: string }[] = [
 export function SceneControls() {
   const scale = useUi((s) => s.scale);
   const view = useUi((s) => s.view);
-  const { setScale, setView } = useUi.getState();
+  const hidden = useUi((s) => s.panelsHidden);
+  const { setScale, setView, setPanelsHidden } = useUi.getState();
   return (
     <div className="scene-controls">
       <div className="seg" role="radiogroup" aria-label="Scale">
@@ -31,6 +32,21 @@ export function SceneControls() {
             {v.label}
           </button>
         ))}
+      </div>
+      <div className="seg">
+        <button
+          className="seg-icon"
+          aria-pressed={hidden}
+          aria-label={hidden ? "Show panels" : "Hide panels"}
+          title={hidden ? "Show the data panels" : "Hide every panel for a clear view"}
+          onClick={() => setPanelsHidden(!hidden)}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+            <circle cx="12" cy="12" r="3" />
+            {hidden ? <path d="M3 3l18 18" /> : null}
+          </svg>
+        </button>
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import { activeCmes, cmeFrontKm, cmePhase, cmeSpeedAt } from "../lib/cme.ts";
 import { useServerNow } from "../lib/clock.ts";
 import { formatClock, formatDuration } from "../lib/travel.ts";
 import { useLive } from "../store/live.ts";
+import { useUi } from "../store/ui.ts";
+import { MinButton } from "./MinButton.tsx";
 
 const hhmm = (t: number) => new Date(t * 1000).toISOString().slice(11, 16);
 
@@ -15,20 +17,21 @@ export function CmeCard() {
   const now = useServerNow();
   const cmes = useLive((s) => s.cmes);
   const flares = useLive((s) => s.flares);
+  const minimized = useUi((s) => s.minimized.cme);
   if (now === null) return null;
   const list = activeCmes(cmes, now).slice(0, 2);
   if (!list.length) return null;
 
   return (
-    <div className="cme-cards" aria-live="polite">
-      {list.map((c) => (
-        <CmeItem key={c.id} cme={c} now={now} flare={c.flareId ? flares.find((f) => f.id === c.flareId) ?? null : null} />
+    <div className="cme-cards" aria-live="polite" data-min={minimized}>
+      {list.map((c, i) => (
+        <CmeItem key={c.id} cme={c} now={now} first={i === 0} flare={c.flareId ? flares.find((f) => f.id === c.flareId) ?? null : null} />
       ))}
     </div>
   );
 }
 
-function CmeItem({ cme, now, flare }: { cme: Cme; now: number; flare: { cls: string; regionNo: number | null } | null }) {
+function CmeItem({ cme, now, flare, first }: { cme: Cme; now: number; flare: { cls: string; regionNo: number | null } | null; first: boolean }) {
   const phase = cmePhase(cme, now);
   const km = cmeFrontKm(cme, now) ?? 0;
   const eta = cme.forecast?.eta ?? null;
@@ -37,7 +40,12 @@ function CmeItem({ cme, now, flare }: { cme: Cme; now: number; flare: { cls: str
     <section className={`cme-card ${toEarth ? "earth" : ""}`} aria-label={toEarth ? "CME heading for Earth" : "CME missing Earth"}>
       <header>
         <span className="cme-dot" aria-hidden />
-        <h2>{toEarth ? (phase === "passed Earth" ? "CME reached Earth" : "CME heading for Earth") : "CME, will miss Earth"}</h2>
+        <h2>
+          <button type="button" className="cme-title" onClick={() => useUi.getState().select({ kind: "cme", id: cme.id })} title="Details">
+            {toEarth ? (phase === "passed Earth" ? "CME reached Earth" : "CME heading for Earth") : "CME, will miss Earth"}
+          </button>
+        </h2>
+        {first ? <MinButton panel="cme" label="CME cards" /> : null}
       </header>
       <p className="cme-from">
         Left the Sun {hhmm(cme.launchAt)} UTC

@@ -51,6 +51,7 @@ Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI pa
 - [ ] Backend writes `cme_forecast`
 - [x] Frontend animates `CmeShells` per frame from the same `dbm()`; CME card with Earth ETA (the front reaches 1 AU exactly at the forecast ETA, tested)
 - [x] SunspotLayer + FlareMarkers placed on the Sun by lat/lon (frontend; drawn in the photosphere shader, rotating 13.2°/day; Sun camera view)
+- [x] Click a body, region or CME → info card (UF3); Focus camera; panels can be minimized or all hidden
 - **Done when:** a past CME from DONKI replays to Earth with an ETA matching the DBM test values.
 
 ## Phase 4: Alerts & replay (UC3, UC7, UF6, UF7)

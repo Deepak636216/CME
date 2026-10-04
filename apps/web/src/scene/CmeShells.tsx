@@ -8,6 +8,7 @@ import { activeCmes, cmeDirection, cmeFrontKm, cmePhase, cmeSpeedAt } from "../l
 import { planetPosition, type Vec3 } from "../lib/ephemeris.ts";
 import { formatDuration } from "../lib/travel.ts";
 import { useLive } from "../store/live.ts";
+import { sameSelection, useUi } from "../store/ui.ts";
 import { createCmeMaterial } from "./materials.ts";
 import { frameSceneTime } from "./time.ts";
 import { reducedMotion } from "./motion.ts";
@@ -50,6 +51,7 @@ function Shell({ cme, labels }: { cme: Cme; labels: LabelState }) {
   const text = useRef<HTMLSpanElement>(null);
   const lastText = useRef(-Infinity);
   const half = (Math.min(Math.max(cme.halfAngle, 5), 85) * Math.PI) / 180;
+  const selected = useUi((s) => sameSelection(s.selected, { kind: "cme", id: cme.id }));
 
   const { cap, cone, front, flank, dir } = useMemo(() => {
     const capGeo = new SphereGeometry(1, 64, 20, 0, Math.PI * 2, 0, half);
@@ -130,8 +132,10 @@ function Shell({ cme, labels }: { cme: Cme; labels: LabelState }) {
       </group>
       <group ref={label}>
         <Html style={{ pointerEvents: "none" }} zIndexRange={[7, 0]}>
-          <div ref={box} className={`scene-label cme-label ${cme.earthDirected ? "earth" : ""}`} style={{ display: "none" }}>
-            <span ref={text} />
+          <div ref={box} className={`scene-label cme-label ${cme.earthDirected ? "earth" : ""}${selected ? " selected" : ""}`} style={{ display: "none" }}>
+            <button type="button" className="scene-label-btn" onClick={() => useUi.getState().select({ kind: "cme", id: cme.id })}>
+              <span ref={text} />
+            </button>
           </div>
         </Html>
       </group>

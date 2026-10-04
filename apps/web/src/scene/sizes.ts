@@ -39,3 +39,11 @@ export function drawnRadius(id: BodyId, mix = scaleAnim.mix): number {
   const b = Math.log(TRUE_RADIUS[id]);
   return Math.exp(a + (b - a) * mix);
 }
+
+/** Where L1 is drawn: its true place, or just outside the enlarged Earth at readable scale (see L1Probe). */
+export function drawnL1(earth: readonly number[], l1: readonly number[]): [number, number, number] {
+  const d = Math.hypot(earth[0], earth[1], earth[2]);
+  const gap = Math.max(d - Math.hypot(l1[0], l1[1], l1[2]), drawnRadius("earth") * 1.8);
+  const k = 1 - gap / d;
+  return [earth[0] * k, earth[1] * k, earth[2] * k];
+}

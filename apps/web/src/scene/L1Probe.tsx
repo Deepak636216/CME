@@ -1,10 +1,11 @@
 import { useRef } from "react";
 import type { Group, Mesh } from "three";
 import { useUi } from "../store/ui.ts";
+import { HitTarget } from "./HitTarget.tsx";
 import { useFrame } from "@react-three/fiber";
 import { framePositions } from "./time.ts";
 import { screenDistance, showIf } from "./declutter.ts";
-import { drawnRadius } from "./sizes.ts";
+import { drawnL1, drawnRadius } from "./sizes.ts";
 import { Label } from "./Labels.tsx";
 import { liveWindSpeed } from "./SunEarthLine.tsx";
 import { DEFAULT_WIND_KM_S, formatDuration, windSeconds } from "../lib/travel.ts";
@@ -20,6 +21,8 @@ export function L1Probe() {
   const group = useRef<Group>(null);
   const mesh = useRef<Mesh>(null);
   const trueScale = useUi((s) => s.scale === "true");
+  const selected = useUi((s) => s.selected?.kind === "l1");
+  const select = () => useUi.getState().select({ kind: "l1" });
   const sub = useRef<HTMLElement>(null);
   const labelBox = useRef<HTMLDivElement>(null);
   useFrame((state) => {
@@ -30,16 +33,13 @@ export function L1Probe() {
     if (sub.current && sub.current.textContent !== text) sub.current.textContent = text;
     const g = group.current;
     if (!g) return;
-    const [ex, ey, ez] = p.earth;
-    const d = Math.hypot(ex, ey, ez);
     const earthR = drawnRadius("earth");
-    const gap = Math.max(d - Math.hypot(...p.l1), earthR * 1.8);
-    const k = 1 - gap / d;
-    g.position.set(ex * k, ey * k, ez * k);
+    const at = drawnL1(p.earth, p.l1);
+    g.position.set(...at);
     mesh.current?.scale.setScalar(earthR * 0.12);
     // Declutter, measured where L1 is drawn: right next to Earth on screen the Earth label is enough,
     // and the detail line needs room.
-    const apart = screenDistance(p.earth, [ex * k, ey * k, ez * k], state.camera, state.size);
+    const apart = screenDistance(p.earth, at, state.camera, state.size);
     showIf(labelBox.current, apart > 14);
     showIf(sub.current, apart > 36);
   });
@@ -49,7 +49,8 @@ export function L1Probe() {
         <octahedronGeometry args={[1]} />
         <meshBasicMaterial color="#c4b5fd" />
       </mesh>
-      <Label text="L1" sub="solar wind monitor" subRef={sub} rootRef={labelBox} side="left" marker={trueScale ? "#c4b5fd" : null} />
+      <HitTarget radius={() => drawnRadius("earth") * 0.12} onSelect={select} />
+      <Label text="L1" sub="solar wind monitor" subRef={sub} rootRef={labelBox} side="left" marker={trueScale ? "#c4b5fd" : null} onSelect={select} selected={selected} />
     </group>
   );
 }

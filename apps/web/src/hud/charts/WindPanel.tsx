@@ -8,6 +8,8 @@ import { formatDuration, windSeconds } from "../../lib/travel.ts";
 import { bzDirection, fmtBz } from "../../lib/format.ts";
 import { liveStore, WIND_KEYS } from "../../store/live.ts";
 import { DataAge } from "../DataAge.tsx";
+import { MinButton } from "../MinButton.tsx";
+import { useUi } from "../../store/ui.ts";
 import { CHART } from "./theme.ts";
 import { SYNC_KEY, useHover } from "./hover.ts";
 import { hhmm, useUplot, utc } from "./useUplot.ts";
@@ -179,9 +181,12 @@ export function WindPanel({ now }: { now: number }) {
   const speedData = series.speed;
   const speedRow = hoverT === null ? rowAt(speedData, Infinity) : rowAt(speedData, hoverT);
   const speed = speedRow === null ? null : (speedData[1][speedRow] as number);
+  const bzRow = rowAt(series.bz, hoverT ?? Infinity);
+  const bzNow = bzRow === null ? null : (series.bz[1][bzRow] as number);
+  const minimized = useUi((st) => st.minimized.wind);
 
   return (
-    <section className="hud-panel" aria-labelledby="wind-title">
+    <section className="hud-panel" aria-labelledby="wind-title" data-min={minimized}>
       <header className="hud-head">
         <div className="hud-title">
           <h2 id="wind-title">Solar wind at L1</h2>
@@ -191,9 +196,15 @@ export function WindPanel({ now }: { now: number }) {
               : `reaches Earth in ~${formatDuration(windSeconds(L1_DISTANCE_AU * AU_KM, speed))} at this speed`}
           </span>
         </div>
+        {speed !== null ? (
+          <span className="hud-mini" aria-hidden={!minimized}>
+            {Math.round(speed)} km/s{bzNow !== null ? ` · Bz ${fmtBz(bzNow)} nT` : ""}
+          </span>
+        ) : null}
         <button className="hud-btn" aria-pressed={table} onClick={() => setTable(!table)}>
           {table ? "Chart" : "Table"}
         </button>
+        <MinButton panel="wind" label="solar wind panel" />
       </header>
       <div className="hud-body">
         <div className="wind-grid" hidden={table}>

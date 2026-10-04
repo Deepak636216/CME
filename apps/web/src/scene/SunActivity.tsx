@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import { Vector3, type Group, type Mesh, type ShaderMaterial } from "three";
+import { Quaternion, Vector3, type Group, type Mesh, type ShaderMaterial } from "three";
 import { formatLocation } from "@cme/physics";
 import { flaresAt, spotsAt, activityFromFlux, type FlareMark, type SpotMark } from "../lib/sunActivity.ts";
 import { latest } from "../lib/travel.ts";
@@ -11,6 +11,8 @@ import { frameSceneTime } from "./time.ts";
 import { drawnRadius, scaleAnim } from "./sizes.ts";
 import { reducedMotion } from "./motion.ts";
 import { showIf } from "./declutter.ts";
+import { HitTarget } from "./HitTarget.tsx";
+import { useUi } from "../store/ui.ts";
 
 const REFRESH_S = 0.25; // spots and flares change slowly; the pulse is per frame
 /** Spots are enlarged with the bodies at readable scale (true size at true scale). */
@@ -31,6 +33,20 @@ export function SunActivity({ surface, corona, sunGroup }: { surface: ShaderMate
   const regionLabels = useRef(new Map<number, { group: Group | null; box: HTMLDivElement | null }>());
   const flareLabel = useRef<{ group: Group | null; box: HTMLDivElement | null; text: HTMLSpanElement | null }>({ group: null, box: null, text: null });
   const regions = useLive((s) => s.regions);
+  const selectedRegion = useUi((s) => (s.selected?.kind === "region" ? s.selected.regionNo : null));
+
+  /** A click on the Sun: the region whose spot is under (or right next to) the pointer, else the Sun itself. */
+  const onSunClick = (point: Vector3) => {
+    const sun = sunGroup.current;
+    if (!sun) return;
+    const local = point.clone().applyQuaternion(new Quaternion().copy(sun.quaternion).invert()).normalize();
+    let best: { no: number; d: number } | null = null;
+    for (const sp of state.current.spots) {
+      const d = Math.acos(Math.min(1, Math.max(-1, local.x * sp.dir[0] + local.y * sp.dir[1] + local.z * sp.dir[2])));
+      if (d <= Math.max(sp.radius * 2.5, 0.06) && (!best || d < best.d)) best = { no: sp.regionNo, d };
+    }
+    useUi.getState().select(best ? { kind: "region", regionNo: best.no } : { kind: "sun" });
+  };
   const tmp = useMemo(() => ({ w: new Vector3(), cam: new Vector3(), right: new Vector3(), c: new Vector3() }), []);
 
   useFrame((frame, dt) => {
@@ -125,6 +141,7 @@ export function SunActivity({ surface, corona, sunGroup }: { surface: ShaderMate
 
   return (
     <>
+      <HitTarget radius={() => drawnRadius("sun") / 1.15} onSelect={(e) => onSunClick(e.point)} />
       <group>
         {glowMats.map((m, i) => (
           <mesh key={i} ref={(el) => (glows.current[i] = el)} material={m} visible={false} scale={1}>
@@ -137,10 +154,12 @@ export function SunActivity({ surface, corona, sunGroup }: { surface: ShaderMate
           <Html style={{ pointerEvents: "none" }} zIndexRange={[8, 0]}>
             <div
               ref={(el) => regionLabels.current.set(reg.regionNo, { ...(regionLabels.current.get(reg.regionNo) ?? { group: null }), box: el })}
-              className="scene-label region-label"
+              className={`scene-label region-label${selectedRegion === reg.regionNo ? " selected" : ""}`}
               style={{ display: "none" }}
             >
-              <span>AR {reg.regionNo}</span>
+              <button type="button" className="scene-label-btn" onClick={() => useUi.getState().select({ kind: "region", regionNo: reg.regionNo })}>
+                AR {reg.regionNo}
+              </button>
               <small>
                 {formatLocation(reg.lat, reg.lon)}
                 {reg.magClass ? ` · ${reg.magClass}` : ""}
@@ -152,7 +171,16 @@ export function SunActivity({ surface, corona, sunGroup }: { surface: ShaderMate
       <group ref={(g) => (flareLabel.current.group = g)}>
         <Html style={{ pointerEvents: "none" }} zIndexRange={[9, 0]}>
           <div ref={(el) => (flareLabel.current.box = el)} className="scene-label flare-label" style={{ display: "none" }}>
-            <span>Flare</span>
+            <button
+              type="button"
+              className="scene-label-btn"
+              onClick={() => {
+                const no = state.current.flares[0]?.flare.regionNo;
+                useUi.getState().select(no ? { kind: "region", regionNo: no } : { kind: "sun" });
+              }}
+            >
+              Flare
+            </button>
             <small ref={(el) => (flareLabel.current.text = el)} />
           </div>
         </Html>

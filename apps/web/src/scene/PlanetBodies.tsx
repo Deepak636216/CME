@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Matrix4, Vector3, type Group, type Mesh } from "three";
 import { PLANETS, earthAxes, type PlanetInfo } from "../lib/ephemeris.ts";
-import { useUi } from "../store/ui.ts";
+import { sameSelection, useUi } from "../store/ui.ts";
+import { HitTarget } from "./HitTarget.tsx";
 import { framePositions, frameSceneTime } from "./time.ts";
 import { drawnRadius } from "./sizes.ts";
 import { createAtmosphereMaterial, createEarthMaterial, createRockyMaterial } from "./materials.ts";
@@ -11,6 +12,13 @@ import { reducedMotion } from "./motion.ts";
 import { Label } from "./Labels.tsx";
 
 const FADE_IN_S = 0.6;
+
+/** Is this planet the selected object, and a function that selects it (UF3). */
+function usePlanetSelection(id: PlanetInfo["id"]) {
+  const selected = useUi((st) => sameSelection(st.selected, { kind: "planet", id }));
+  const select = () => useUi.getState().select({ kind: "planet", id });
+  return { selected, select };
+}
 const CLOUD_DRIFT = 0.0004; // map widths per second of wall time: just enough to see the clouds are alive
 
 /**
@@ -18,6 +26,7 @@ const CLOUD_DRIFT = 0.0004; // map widths per second of wall time: just enough t
  * day/night line is today's), and a thin atmosphere halo. Flat blue until the maps arrive.
  */
 function Earth({ info }: { info: PlanetInfo }) {
+  const { selected, select } = usePlanetSelection("earth");
   const group = useRef<Group>(null);
   const globe = useRef<Mesh>(null);
   const halo = useRef<Mesh>(null);
@@ -80,13 +89,15 @@ function Earth({ info }: { info: PlanetInfo }) {
       <mesh ref={halo} material={air}>
         <sphereGeometry args={[1, 64, 32]} />
       </mesh>
-      <Label text={info.label} marker={trueScale ? info.color : null} />
+      <HitTarget radius={() => drawnRadius("earth")} onSelect={select} />
+      <Label text={info.label} marker={trueScale ? info.color : null} onSelect={select} selected={selected} />
     </group>
   );
 }
 
 /** Venus (banded cloud deck) and Mercury (cratered rock), procedural: nothing to download. */
 function RockyPlanet({ info }: { info: PlanetInfo & { id: "venus" | "mercury" } }) {
+  const { selected, select } = usePlanetSelection(info.id);
   const group = useRef<Group>(null);
   const mesh = useRef<Mesh>(null);
   const trueScale = useUi((s) => s.scale === "true");
@@ -108,7 +119,8 @@ function RockyPlanet({ info }: { info: PlanetInfo & { id: "venus" | "mercury" } 
       <mesh ref={mesh} material={surface}>
         <sphereGeometry args={[1, 48, 24]} />
       </mesh>
-      <Label text={info.label} marker={trueScale ? info.color : null} />
+      <HitTarget radius={() => drawnRadius(info.id)} onSelect={select} />
+      <Label text={info.label} marker={trueScale ? info.color : null} onSelect={select} selected={selected} />
     </group>
   );
 }

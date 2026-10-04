@@ -7,14 +7,18 @@ import { CmeCard } from "../hud/CmeCard.tsx";
 import { PanelBoundary } from "../hud/PanelBoundary.tsx";
 import { SceneFallback } from "../hud/SceneFallback.tsx";
 import { hasWebGL } from "../lib/webgl.ts";
+import { useUi } from "../store/ui.ts";
 
 const SceneCanvas = lazy(() => import("../scene/SceneCanvas.tsx"));
 const HudPanels = lazy(() => import("../hud/charts/HudPanels.tsx"));
+const InfoCard = lazy(() => import("../hud/InfoCard.tsx"));
 
 export function LivePage() {
   const [webgl] = useState(hasWebGL);
+  const selected = useUi((s) => s.selected);
+  const hidden = useUi((s) => s.panelsHidden);
   return (
-    <div className="live">
+    <div className="live" data-panels={hidden ? "hidden" : "shown"}>
       <div className="scene">
         {webgl ? (
           <SceneBoundary>
@@ -30,17 +34,26 @@ export function LivePage() {
         <>
           <SceneClock />
           <SceneControls />
-          <SceneKey />
-          <CmeCard />
+          {!hidden && !selected ? <SceneKey /> : null}
+          {!hidden ? <CmeCard /> : null}
+          {selected ? (
+            <PanelBoundary what="details">
+              <Suspense fallback={null}>
+                <InfoCard sel={selected} />
+              </Suspense>
+            </PanelBoundary>
+          ) : null}
         </>
       ) : (
         <SceneClock />
       )}
-      <PanelBoundary what="charts">
-        <Suspense fallback={<div className="hud hud-wait muted">Loading charts…</div>}>
-          <HudPanels />
-        </Suspense>
-      </PanelBoundary>
+      {!hidden ? (
+        <PanelBoundary what="charts">
+          <Suspense fallback={<div className="hud hud-wait muted">Loading charts…</div>}>
+            <HudPanels />
+          </Suspense>
+        </PanelBoundary>
+      ) : null}
     </div>
   );
 }
