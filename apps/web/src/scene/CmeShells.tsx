@@ -66,6 +66,8 @@ function Shell({ cme, labels }: { cme: Cme; labels: LabelState }) {
     const earth = planetPosition("earth", cme.launchAt);
     const d: Vec3 = cmeDirection(cme.lat, cme.lon, earth);
     return { cap: capGeo, cone: coneGeo, front: f, flank: fl, dir: d };
+    // cme.id: a different CME always gets its own geometry and materials, even with the same angles
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cme.id, cme.lat, cme.lon, cme.launchAt, cme.earthDirected, half]);
 
   useEffect(

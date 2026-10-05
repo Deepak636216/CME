@@ -20,22 +20,25 @@ export interface Clock {
   scenario: string | null;
 }
 
+/** A value in a series column. null = no measurement for that minute (JSON has no NaN). */
+export type Sample = number | null;
+
 export interface XraySeries {
   t: Unix[];
-  long: number[]; // 0.1-0.8 nm flux, W/m^2
-  short: number[]; // 0.05-0.4 nm flux, W/m^2
+  long: Sample[]; // 0.1-0.8 nm flux, W/m^2
+  short: Sample[]; // 0.05-0.4 nm flux, W/m^2
 }
 
 export interface WindSeries {
   t: Unix[];
-  speed: number[]; // km/s
-  density: number[]; // p/cm^3
-  temperature: number[]; // K
-  bx: number[]; // nT, GSM
-  by: number[];
-  bz: number[];
-  bt: number[];
-  newell: number[]; // Newell coupling dPhi/dt (raw units)
+  speed: Sample[]; // km/s
+  density: Sample[]; // p/cm^3
+  temperature: Sample[]; // K
+  bx: Sample[]; // nT, GSM
+  by: Sample[];
+  bz: Sample[];
+  bt: Sample[];
+  newell: Sample[]; // Newell coupling dPhi/dt (raw units)
 }
 
 export interface SunspotRegion {
@@ -180,14 +183,6 @@ export interface HealthResponse {
 
 // ---- helpers ---------------------------------------------------------------
 
-export function isServerMessage(x: unknown): x is ServerMessage {
-  if (!x || typeof x !== "object") return false;
-  const m = x as { type?: unknown; ts?: unknown; seq?: unknown };
-  if (typeof m.ts !== "number") return false;
-  if (m.type === "ping") return true;
-  return (m.type === "snapshot" || m.type === "delta" || m.type === "alert") && typeof m.seq === "number";
-}
-
 export function emptyXray(): XraySeries {
   return { t: [], long: [], short: [] };
 }
@@ -195,3 +190,4 @@ export function emptyXray(): XraySeries {
 export function emptyWind(): WindSeries {
   return { t: [], speed: [], density: [], temperature: [], bx: [], by: [], bz: [], bt: [], newell: [] };
 }
+export * from "./schema.ts";

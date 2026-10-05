@@ -1,7 +1,7 @@
 /** 7 days at 1-minute cadence. */
 export const SERIES_CAPACITY = 10_080;
 
-export type Columns<K extends string> = { t: number[] } & Record<K, number[]>;
+export type Columns<K extends string> = { t: number[] } & Record<K, (number | null)[]>;
 export type ColumnViews<K extends string> = { t: Float64Array } & Record<K, Float64Array>;
 
 /**

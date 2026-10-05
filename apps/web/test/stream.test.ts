@@ -191,3 +191,34 @@ test("a test alert reaches an open page in under 1 s (PLAN phase 4)", async () =
   assert.ok(ms < 1000, `delivered in ${ms} ms`);
   assert.ok(store.getState().alerts.some((x) => x.id === a.id && x.clearedAt === null), "in the store too");
 });
+
+test("a message that breaks the contract is never applied; the client resyncs and catches up", async () => {
+  let corruptNext = false;
+  // Corrupts the next delta it receives: an X-ray column of strings, shorter than its times.
+  const Corrupting = class extends WebSocket {
+    set onmessage(fn: ((ev: MessageEvent) => void) | null) {
+      super.onmessage = fn && ((ev: MessageEvent) => {
+        const m = JSON.parse(String(ev.data));
+        if (corruptNext && m.type === "delta") {
+          corruptNext = false;
+          m.data.xray = { t: [m.ts, m.ts + 60], long: ["oops"], short: [] };
+          return fn({ data: JSON.stringify(m) } as MessageEvent);
+        }
+        fn(ev);
+      });
+    }
+  } as typeof WebSocket;
+
+  const { store, stream } = open({ WebSocketImpl: Corrupting });
+  await stream.start();
+  await waitFor("caught up", caughtUp(store));
+  const lastT = store.getState().xray.lastT;
+  corruptNext = true;
+  await waitFor("rejected", () => store.getState().conn.invalid === 1);
+  assert.match(store.getState().conn.lastInvalid ?? "", /xray/);
+  await waitFor("resynced and caught up", () => store.getState().conn.resyncs >= 1 && caughtUp(store)());
+  const s = store.getState();
+  assert.ok(s.xray.lastT! >= lastT!, "series intact");
+  assert.ok([...s.xray.view().long].every((v) => Number.isNaN(v) || v > 0), "no junk in the store");
+  assert.equal(s.xray.lastT, mock.engine.state().xray.t.at(-1));
+});

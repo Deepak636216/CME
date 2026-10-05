@@ -1,0 +1,14 @@
+{
+  "name": "@cme/contract-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The /api/v1 contract as executable tests. Runs against the in-process mock, or any server via CONTRACT_BASE_URL.",
+  "scripts": {
+    "test": "tsx --test --test-concurrency=1 test/*.test.ts"
+  },
+  "dependencies": {
+    "@cme/shared": "*",
+    "@cme/mock": "*"
+  }
+}

@@ -17,6 +17,8 @@ export interface Conn {
   lastMessageAt: Unix | null; // wall clock, seconds
   gaps: number; // seq gaps detected since load
   resyncs: number; // snapshots applied after a gap or resync timeout
+  invalid: number; // messages or responses rejected by the contract schemas (never applied)
+  lastInvalid: string | null; // what was wrong with the last one, for the Status page
 }
 
 /**
@@ -41,6 +43,8 @@ export interface LiveData {
   alerts: Alert[];
   feeds: FeedStatus[];
   conn: Conn;
+  /** Seconds old each new X-ray / wind point was on arrival (real-time clock only); see lib/arrival.ts. */
+  arrivals: { xray: number[]; wind: number[] };
 }
 
 export type LiveStore = StoreApi<LiveData>;
@@ -59,7 +63,8 @@ export function createLiveStore(): LiveStore {
     cmes: [],
     alerts: [],
     feeds: [],
-    conn: { status: "connecting", source: "none", failures: 0, lastMessageAt: null, gaps: 0, resyncs: 0 },
+    arrivals: { xray: [], wind: [] },
+    conn: { status: "connecting", source: "none", failures: 0, lastMessageAt: null, gaps: 0, resyncs: 0, invalid: 0, lastInvalid: null },
   }));
 }
 

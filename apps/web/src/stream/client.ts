@@ -1,5 +1,7 @@
-import { API_PREFIX, isServerMessage, type Alert, type ClientMessage, type LiveState, type ServerMessage } from "@cme/shared";
+import { API_PREFIX, checkLiveState, checkServerMessage, type Alert, type ClientMessage, type LiveState, type ServerMessage } from "@cme/shared";
 import type { Conn, LiveStore } from "../store/live.ts";
+import { recordArrival } from "../lib/arrival.ts";
+import { serverNow } from "../lib/api.ts";
 import { applyAlert, applyDelta, applySnapshot, toLiveState } from "./apply.ts";
 
 export interface StateCache {
@@ -80,10 +82,12 @@ export class LiveStream {
     this.stopped = false;
     this.setConn({ status: "connecting" });
 
-    const cached = await this.o.cache?.load().catch(() => null);
+    const loaded = await this.o.cache?.load().catch(() => null);
     if (this.stopped) return;
+    // A cache written by an older version may not match the contract any more: skip it rather than paint junk.
+    const cached = loaded ? checkLiveState(loaded) : null;
     // Paint only: the cached seq may belong to another server run, so never resume from it.
-    if (cached && this.o.store.getState().seq === null) applySnapshot(this.o.store, cached, "cache", false);
+    if (cached?.ok && this.o.store.getState().seq === null) applySnapshot(this.o.store, cached.value, "cache", false);
 
     await this.fetchState();
     if (this.stopped) return;
@@ -156,12 +160,17 @@ export class LiveStream {
     } catch {
       return;
     }
-    if (!isServerMessage(m)) return;
+    const checked = checkServerMessage(m);
 
     this.armSilence();
     this.markOpen();
     this.setConn({ lastMessageAt: Date.now() / 1000 });
-    this.handle(m);
+    if (checked.ok) return this.handle(checked.value);
+    // Unknown message types are skipped (the server may add new ones). Anything else that fails the contract
+    // is never applied; if it carried a seq, what it held is now missing, so ask for a fresh snapshot.
+    if (checked.error === "unknown") return;
+    this.setConn({ invalid: this.o.store.getState().conn.invalid + 1, lastInvalid: checked.error });
+    if (typeof (m as { seq?: unknown }).seq === "number" && !this.resyncTimer) this.requestResync();
   }
 
   private markOpen(): void {
@@ -195,12 +204,27 @@ export class LiveStream {
       return;
     }
     if (store.getState().conn.source !== "ws") this.setConn({ source: "ws" });
-    if (m.type === "delta") applyDelta(store, m.seq, m.data);
-    else {
+    if (m.type === "delta") {
+      applyDelta(store, m.seq, m.data);
+      this.recordArrivals(m.data.xray?.t, m.data.wind?.t);
+    } else {
       applyAlert(store, m.seq, m.data);
       this.o.onAlert?.(m.data);
     }
     this.dirty = true;
+  }
+
+  /** Only at real-time speed: in a sped-up mock scenario "how late" has no meaning. */
+  private recordArrivals(xrayT?: number[], windT?: number[]): void {
+    const { clock, clockAt, arrivals } = this.o.store.getState();
+    if (!clock || clock.speed !== 1 || !(xrayT?.length || windT?.length)) return;
+    const now = serverNow(clock, clockAt);
+    this.o.store.setState({
+      arrivals: {
+        xray: xrayT?.length ? recordArrival(arrivals.xray, now - xrayT[xrayT.length - 1]) : arrivals.xray,
+        wind: windT?.length ? recordArrival(arrivals.wind, now - windT[windT.length - 1]) : arrivals.wind,
+      },
+    });
   }
 
   private requestResync(): void {
@@ -281,8 +305,13 @@ export class LiveStream {
     try {
       const res = await this.o.fetchImpl(`${this.o.baseUrl}${API_PREFIX}/state`, { signal: ctrl.signal });
       if (!res.ok) return;
-      const s = (await res.json()) as LiveState;
+      const checked = checkLiveState(await res.json());
       if (this.stopped || ctrl.signal.aborted) return;
+      if (!checked.ok) {
+        this.setConn({ invalid: this.o.store.getState().conn.invalid + 1, lastInvalid: `GET /state ${checked.error}` });
+        return;
+      }
+      const s = checked.value;
       const cur = this.o.store.getState().seq;
       if (this.opened && cur !== null && s.seq <= cur) return; // the socket is already ahead
       applySnapshot(this.o.store, s, "rest");

@@ -1,5 +1,6 @@
 import { DataAge } from "../hud/DataAge.tsx";
 import { useServerNow, useWallSecond } from "../lib/clock.ts";
+import { percentile } from "../lib/arrival.ts";
 import { feedFreshness, formatAge } from "../lib/freshness.ts";
 import { useLive } from "../store/live.ts";
 
@@ -9,6 +10,7 @@ export function StatusPage() {
   const feeds = useLive((s) => s.feeds);
   const seq = useLive((s) => s.seq);
   const conn = useLive((s) => s.conn);
+  const arrivals = useLive((s) => s.arrivals);
   useLive((s) => s.seriesRev); // re-render when points arrive
   const xrayLen = useLive((s) => s.xray.length);
   const windLen = useLive((s) => s.wind.length);
@@ -78,11 +80,43 @@ export function StatusPage() {
             </td>
           </tr>
           <tr>
+            <th>Rejected messages</th>
+            <td className={conn.invalid ? "stale" : undefined}>
+              {conn.invalid}
+              {conn.lastInvalid ? ` (last: ${conn.lastInvalid})` : ""}
+            </td>
+          </tr>
+          <tr>
             <th>Points held</th>
             <td>
               {xrayLen} X-ray · {windLen} wind
             </td>
           </tr>
+        </tbody>
+      </table>
+
+      <h2>Arrival delay</h2>
+      <p className="muted">
+        How old each new point was when it reached this page: the source's own publishing delay (NOAA posts each
+        minute about a minute late), plus our server and the network. Measured only when the clock runs at real time.
+      </p>
+      <table className="kv">
+        <tbody>
+          {(["xray", "wind"] as const).map((k) => {
+            const a = arrivals[k];
+            const p50 = percentile(a, 50);
+            const p95 = percentile(a, 95);
+            return (
+              <tr key={k}>
+                <th>{k === "xray" ? "X-ray" : "Solar wind"}</th>
+                <td>
+                  {p50 === null || p95 === null
+                    ? clock.speed === 1 ? "waiting for new data…" : `not measured at ×${clock.speed}`
+                    : `median ${formatAge(p50)} · 95% within ${formatAge(p95)} · last ${a.length} update${a.length === 1 ? "" : "s"}`}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </section>

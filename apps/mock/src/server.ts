@@ -4,7 +4,7 @@
  */
 import http from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-import { API_PREFIX, type ServerMessage } from "@cme/shared";
+import { API_PREFIX, historyQuerySchema, type ServerMessage } from "@cme/shared";
 import { Engine, HISTORY_S } from "./engine.ts";
 import type { Fixtures } from "./fixtures.ts";
 import { listScenarios } from "./scenario.ts";
@@ -85,12 +85,16 @@ export function startMockServer(opts: MockServerOptions) {
           case `${API_PREFIX}/health`: return json(200, engine.health());
           case `${API_PREFIX}/regions`: return json(200, engine.regionsAt(now));
           case `${API_PREFIX}/history`: {
-            const series = q("series");
-            const resn = q("res") ?? "1m";
-            if (series !== "xray" && series !== "wind") return json(400, { error: "series must be xray or wind" });
-            if (resn !== "1m" && resn !== "5m") return json(400, { error: "res must be 1m or 5m" });
-            const to = num("to", now);
-            const from = Math.max(num("from", to - 86400), to - HISTORY_S);
+            const parsed = historyQuerySchema.safeParse({
+              series: q("series") ?? undefined, res: q("res") ?? "1m", from: q("from") ?? undefined, to: q("to") ?? undefined,
+            });
+            if (!parsed.success) {
+              const i = parsed.error.issues[0];
+              return json(400, { error: `${i.path.join(".")}: ${i.message}` });
+            }
+            const { series, res: resn } = parsed.data;
+            const to = parsed.data.to ?? now;
+            const from = Math.max(parsed.data.from ?? to - 86400, to - HISTORY_S);
             return json(200, { series, res: resn, from, to, data: engine.history(series, from, to, resn) });
           }
           case `${API_PREFIX}/events`: {

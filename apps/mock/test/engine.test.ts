@@ -103,3 +103,19 @@ test("test alert is sent at once and clears itself after 10 minutes", () => {
   e.tick(a.raisedAt + 700);
   assert.ok(e.state().alerts.find((x) => x.id === a.id)?.clearedAt, "cleared");
 });
+
+test("every message the engine sends, in every scenario, matches the contract schemas", async () => {
+  const { checkServerMessage, checkLiveState, historyResponseSchema } = await import("@cme/shared");
+  for (const { name } of listScenarios()) {
+    const { e, msgs } = play(name, 30);
+    const bad = msgs.map(checkServerMessage).filter((r) => !r.ok);
+    assert.deepEqual(bad, [], `${name}: ${JSON.stringify(bad[0])}`);
+    const s = checkLiveState(e.state());
+    assert.ok(s.ok, `${name} state: ${!s.ok && s.error}`);
+    const now = e.simNow();
+    for (const series of ["xray", "wind"] as const) {
+      const h = { series, res: "5m", from: now - 86400, to: now, data: e.history(series, now - 86400, now, "5m") };
+      assert.ok(historyResponseSchema.safeParse(h).success, `${name} history ${series}`);
+    }
+  }
+});

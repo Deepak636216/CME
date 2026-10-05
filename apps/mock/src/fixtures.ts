@@ -10,7 +10,10 @@ import { newell, parseLocation } from "@cme/physics";
 export const DATA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../docs/reconnection/data");
 
 export const toUnix = (s: string) => Math.floor(Date.parse(/Z$/.test(s) ? s : s + "Z") / 1000);
-const load = (name: string) => JSON.parse(readFileSync(path.join(DATA_DIR, name), "utf8"));
+/** A row of raw NOAA/NASA JSON. Untyped on purpose: these files are upstream data, read field by field below. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Raw = Record<string, any>;
+const load = (name: string): Raw[] => JSON.parse(readFileSync(path.join(DATA_DIR, name), "utf8"));
 
 export interface XrayPt { t: number; long: number; short: number }
 export interface WindPt {
@@ -84,7 +87,7 @@ export function loadFixtures(): Fixtures {
   const xrayRows = [...byT.values()].filter((p) => p.long > 0).map((p) => ({ ...p, short: p.short > 0 ? p.short : p.long * 0.05 }));
 
   // RTSW: join active plasma + active mag rows on time tag
-  const mag = new Map<number, any>();
+  const mag = new Map<number, Raw>();
   for (const r of load("rtsw_mag_1m.json")) if (r.active && r.bz_gsm !== null) mag.set(toUnix(r.time_tag), r);
   const windRows: WindPt[] = [];
   for (const r of load("rtsw_wind_1m.json")) {
@@ -99,8 +102,8 @@ export function loadFixtures(): Fixtures {
   }
 
   const flares: FlareSeed[] = load("goes_flares_7day.json")
-    .filter((f: any) => f.max_class && f.begin_time && f.max_time)
-    .map((f: any) => {
+    .filter((f: Raw) => f.max_class && f.begin_time && f.max_time)
+    .map((f: Raw) => {
       const peakAt = toUnix(f.max_time);
       return {
         beginAt: toUnix(f.begin_time), peakAt,
@@ -110,8 +113,8 @@ export function loadFixtures(): Fixtures {
     });
 
   const cmes: CmeSeed[] = load("donki_cme.json")
-    .filter((c: any) => c.speed && c.time21_5 && c.latitude !== null && c.longitude !== null)
-    .map((c: any) => ({
+    .filter((c: Raw) => c.speed && c.time21_5 && c.latitude !== null && c.longitude !== null)
+    .map((c: Raw) => ({
       id: c.associatedCMEID ?? c.time21_5, launchAt: toUnix(c.time21_5), speed: c.speed,
       lat: c.latitude, lon: c.longitude, halfAngle: c.halfAngle ?? 30,
     }));
@@ -122,10 +125,10 @@ export function loadFixtures(): Fixtures {
   let regions: RegionSeed[] = [];
   try {
     const all = load("solar_regions.json");
-    const latest = all.reduce((m: string, r: any) => (r.observed_date > m ? r.observed_date : m), "");
+    const latest = all.reduce((m: string, r: Raw) => (r.observed_date > m ? r.observed_date : m), "");
     regions = all
-      .filter((r: any) => r.observed_date === latest && r.area)
-      .map((r: any) => {
+      .filter((r: Raw) => r.observed_date === latest && r.area)
+      .map((r: Raw) => {
         const loc = parseLocation(r.location);
         return loc && {
           regionNo: r.region, observedOn: r.observed_date, lat: loc.lat, lon: loc.lon, areaMsh: r.area,
@@ -133,7 +136,7 @@ export function loadFixtures(): Fixtures {
           pM: r.m_flare_probability, pX: r.x_flare_probability,
         };
       })
-      .filter(Boolean);
+      .filter((r): r is RegionSeed => r !== null);
   } catch {
     // regions fixture is optional
   }

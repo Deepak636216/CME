@@ -1,0 +1,32 @@
+# Checks every push and pull request (GAP_ANALYSIS CD1). Deploy jobs join in Phase 0 with the Worker.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit, integration and contract tests
+        run: npm test
+      - name: Build the web app
+        run: npm run build:web
+      - name: Audit runtime dependencies
+        run: npm audit --omit=dev --audit-level=high

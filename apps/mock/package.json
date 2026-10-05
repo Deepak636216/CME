@@ -16,5 +16,9 @@
   },
   "devDependencies": {
     "@types/ws": "^8.18.2"
+  },
+  "exports": {
+    "./server": "./src/server.ts",
+    "./fixtures": "./src/fixtures.ts"
   }
 }

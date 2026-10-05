@@ -7,11 +7,13 @@
     "mock": "npm run dev -w @cme/mock --",
     "web": "npm run dev -w @cme/web",
     "build:web": "npm run build -w @cme/web",
-    "test": "npm test -w @cme/physics -w @cme/mock -w @cme/web",
-    "typecheck": "tsc -p packages/shared && tsc -p packages/physics && tsc -p apps/mock && tsc -p apps/web",
+    "test": "npm test -w @cme/shared -w @cme/physics -w @cme/mock -w @cme/web -w @cme/contract-tests",
+    "typecheck": "tsc -p packages/shared && tsc -p packages/physics && tsc -p packages/contract-tests && tsc -p apps/mock && tsc -p apps/web",
     "start": "python server.py 8000",
     "snapshot": "python docs/reconnection/scripts/build_snapshot.py",
-    "snapshot:refresh": "python docs/reconnection/scripts/build_snapshot.py --refresh"
+    "snapshot:refresh": "python docs/reconnection/scripts/build_snapshot.py --refresh",
+    "test:contract": "npm test -w @cme/contract-tests",
+    "lint": "eslint ."
   },
   "keywords": [
     "magnetic-reconnection",
@@ -27,8 +29,13 @@
     "apps/*"
   ],
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^22.10.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.71.0"
   }
 }
