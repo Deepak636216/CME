@@ -57,7 +57,7 @@ Contract + mock (done) ──► Frontend: Phase 2 → 3 (UI parts) → 4 (UI pa
 ## Phase 4: Alerts & replay (UC3, UC7, UF6, UF7)
 
 - [ ] AlertEngine rules (flare ≥ M1, Earth-directed CME, Bz ≤ −10 nT) with de-duplication
-- [ ] `alert` WS message → toast, sound, Notification API; acks stored in IndexedDB
+- [x] `alert` WS message → toast, sound, Notification API; acks stored in IndexedDB (frontend; the mock's `POST /mock/alert` sends a test alert, delivered in ~0.1 s)
 - [ ] `GET /history` (edge-cached), `GET /events`; TimelineBar replay mode; `/events` pages
 - [ ] Pruner (UC9)
 - **Done when:** replaying the last 7 days shows each flare and CME at the right moment, and a test alert reaches an open tab in < 1 s.

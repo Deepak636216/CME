@@ -89,3 +89,17 @@ test("resume: missed messages are replayed, too old means snapshot", () => {
   assert.equal(e.messagesSince(-5), null);
   assert.equal(e.messagesSince(s + 10), null);
 });
+
+test("test alert is sent at once and clears itself after 10 minutes", () => {
+  const e = new Engine({ fixtures });
+  e.tick();
+  const msgs: ServerMessage[] = [];
+  e.subscribe((m) => msgs.push(m));
+  const a = e.testAlert();
+  assert.equal(msgs.length, 1, "sent without waiting for a tick");
+  assert.equal(msgs[0].type, "alert");
+  assert.equal(a.rule, "TEST");
+  assert.ok(e.state().alerts.some((x) => x.id === a.id && x.clearedAt === null));
+  e.tick(a.raisedAt + 700);
+  assert.ok(e.state().alerts.find((x) => x.id === a.id)?.clearedAt, "cleared");
+});

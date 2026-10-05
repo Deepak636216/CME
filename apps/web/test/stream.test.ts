@@ -178,3 +178,16 @@ test("the badge goes live when the socket opens, even if the server is quiet", a
   assert.equal(store.getState().conn.lastMessageAt, null);
   assert.equal(store.getState().conn.source, "rest");
 });
+
+test("a test alert reaches an open page in under 1 s (PLAN phase 4)", async () => {
+  const got: { id: string; at: number }[] = [];
+  const { store, stream } = open({ onAlert: (a) => got.push({ id: a.id, at: Date.now() }) });
+  await stream.start();
+  await waitFor("caught up", caughtUp(store));
+  const sent = Date.now();
+  const a = await fetch(`${base}/mock/alert`, { method: "POST", body: "{}" }).then((r) => r.json());
+  await waitFor("alert delivered", () => got.some((g) => g.id === a.id), 1000);
+  const ms = got.find((g) => g.id === a.id)!.at - sent;
+  assert.ok(ms < 1000, `delivered in ${ms} ms`);
+  assert.ok(store.getState().alerts.some((x) => x.id === a.id && x.clearedAt === null), "in the store too");
+});

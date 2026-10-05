@@ -183,6 +183,19 @@ export class Engine {
     this.clockChanged = false;
   }
 
+  /** Raise a TEST alert and send it at once (not on the next tick), so delivery time can be measured. */
+  testAlert(): Alert {
+    const now = Math.round(this.simNow());
+    const alert: Alert = {
+      id: `TEST:${now}:${this.seq + 1}`, rule: "TEST", level: "watch", title: "Test alert",
+      message: "This is a test. Alerts are reaching this page.", refType: "test", refId: String(now),
+      raisedAt: now, clearedAt: null,
+    };
+    this.alerts.set(alert.id, alert);
+    if (!this.quiet) this.emit({ type: "alert", seq: ++this.seq, ts: now, data: alert });
+    return alert;
+  }
+
   private advance(now: number): Delta {
     const d: Delta = {};
     while (this.pending.length && this.pending[0].time <= now) this.applyEvent(this.pending.shift()!, d);
@@ -424,7 +437,9 @@ export class Engine {
 
   private expireAlerts(now: number, d: Delta) {
     for (const a of this.alerts.values()) {
-      if (a.clearedAt !== null || a.rule !== "CME_EARTH") continue;
+      if (a.clearedAt !== null) continue;
+      if (a.rule === "TEST" && now > a.raisedAt + 600) this.clear(a.id, now, d);
+      if (a.rule !== "CME_EARTH") continue;
       const eta = this.cmes.get(a.refId)?.forecast?.eta;
       if (now > (eta ? eta + 12 * HOUR : a.raisedAt + 3 * DAY)) this.clear(a.id, now, d);
     }

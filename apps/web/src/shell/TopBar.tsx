@@ -1,4 +1,5 @@
 import { NavLink } from "react-router";
+import { AlertBell } from "./AlertBell.tsx";
 import { ConnectionBadge } from "./ConnectionBadge.tsx";
 import { FreshnessBadge } from "./FreshnessBadge.tsx";
 
@@ -24,6 +25,7 @@ export function TopBar() {
       <div className="badges">
         <FreshnessBadge />
         <ConnectionBadge />
+        <AlertBell />
       </div>
     </header>
   );

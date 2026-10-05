@@ -54,7 +54,7 @@ export const CONTROL_PAGE = /* html */ `<!doctype html>
       <label>skip every Nth <input id="skipEveryN" type="number" min="0"></label>
       <label>HTTP fail rate <input id="httpFailRate" type="number" min="0" max="1" step="0.05"></label>
     </div>
-    <div class="row" style="margin-top:10px"><button id="chaosApply">Apply</button><button id="chaosOff">All off</button><button id="reset">Reset engine</button></div>
+    <div class="row" style="margin-top:10px"><button id="chaosApply">Apply</button><button id="chaosOff">All off</button><button id="reset">Reset engine</button><button id="testAlert">Send test alert</button></div>
   </section>
   <section>
     <h2>Engine</h2>
@@ -93,6 +93,7 @@ async function refresh() {
 $("chaosApply").onclick = () => post("/mock/chaos", Object.fromEntries(["latencyMs", "dropEveryS", "skipEveryN", "httpFailRate"].map(k => [k, +$(k).value]))).then(refresh);
 $("chaosOff").onclick = () => post("/mock/chaos", {}).then(refresh);
 $("reset").onclick = () => post("/mock/reset", {}).then(refresh);
+$("testAlert").onclick = () => post("/mock/alert", {}).then(refresh);
 
 const lines = [];
 function connect() {

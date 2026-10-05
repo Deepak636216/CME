@@ -86,7 +86,8 @@ export interface Cme {
   forecast: CmeForecast | null;
 }
 
-export type AlertRule = "FLARE_M" | "FLARE_X" | "CME_EARTH" | "BZ_SOUTH" | "FEED_STALE";
+/** TEST is raised on request (to check that alerts reach open tabs) and clears itself after 10 minutes. */
+export type AlertRule = "FLARE_M" | "FLARE_X" | "CME_EARTH" | "BZ_SOUTH" | "FEED_STALE" | "TEST";
 export type AlertLevel = "watch" | "warning";
 
 export interface Alert {
@@ -95,7 +96,7 @@ export interface Alert {
   level: AlertLevel;
   title: string;
   message: string;
-  refType: "flare" | "cme" | "wind" | "feed";
+  refType: "flare" | "cme" | "wind" | "feed" | "test";
   refId: string;
   raisedAt: Unix;
   clearedAt: Unix | null;

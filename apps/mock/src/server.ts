@@ -124,6 +124,8 @@ export function startMockServer(opts: MockServerOptions) {
           case "/mock/chaos":
             chaos = sanitizeChaos(body);
             return json(200, chaos);
+          case "/mock/alert":
+            return json(200, engine.testAlert());
           case "/mock/reset":
             resetEngine();
             return json(200, engine.status());

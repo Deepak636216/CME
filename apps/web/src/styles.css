@@ -348,3 +348,75 @@ table.kv th { width: 160px; }
 }
 
 .seg button.seg-icon { padding: 4px 10px; display: inline-grid; place-items: center; }
+
+/* ---- Alerts (UF6): toasts and the bell ------------------------------------------------------- */
+.toaster {
+  position: fixed; top: 60px; right: 16px; z-index: 60;
+  width: min(360px, calc(100vw - 32px));
+  display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+}
+.toast, .bell-list li { --lvl: var(--warn); }
+.toast[data-level="warning"], .bell-list li[data-level="warning"] { --lvl: var(--error); }
+.toast[data-level="test"], .bell-list li[data-level="test"] { --lvl: #7cb4ff; }
+.toast {
+  pointer-events: auto; display: flex; gap: 10px; padding: 12px 14px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(6px);
+  border: 1px solid var(--line); border-left: 4px solid var(--lvl); border-radius: 10px;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.45);
+  animation: toast-in 0.25s ease-out;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
+/* On the Live page the top-right holds the camera controls and CME cards: pop up under the clock instead. */
+.shell:has(.live) .toaster { top: 150px; right: 50%; transform: translateX(50%); }
+.toast-icon { color: var(--lvl); flex: none; padding-top: 1px; }
+.toast-body { min-width: 0; }
+.toast-kicker { font-size: 0.75rem; color: var(--lvl); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; }
+.toast-title { display: block; margin-top: 2px; }
+.toast-msg { margin: 4px 0 0; font-size: 0.9rem; }
+.toast-hint { margin: 4px 0 0; font-size: 0.82rem; color: var(--muted); }
+.toast-actions { display: flex; gap: 8px; margin-top: 10px; }
+.toast-actions button {
+  font: inherit; font-size: 0.85rem; padding: 4px 12px; border-radius: 6px; cursor: pointer;
+  background: transparent; color: var(--text); border: 1px solid var(--line);
+}
+.toast-actions button.primary { background: color-mix(in srgb, var(--lvl) 22%, transparent); border-color: color-mix(in srgb, var(--lvl) 60%, transparent); }
+.toast-actions button:hover { border-color: var(--muted); }
+
+.bell-wrap { position: relative; display: flex; }
+.bell {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 28px; padding: 0; border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--muted); border: 1px solid var(--line);
+}
+.bell:hover, .bell[aria-expanded="true"] { color: var(--text); border-color: var(--muted); }
+.bell[data-unread] { color: var(--text); }
+.bell-count {
+  position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px;
+  border-radius: 9px; font-size: 0.7rem; font-weight: 700; line-height: 18px; text-align: center;
+  background: var(--warn); color: #1a1205;
+}
+.bell[data-unread="warning"] .bell-count { background: var(--error); color: #1f0707; }
+.bell-panel {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 70;
+  width: min(380px, calc(100vw - 24px)); max-height: min(70vh, 560px); overflow: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 12px 36px rgb(0 0 0 / 0.5);
+}
+.bell-panel header { display: flex; align-items: baseline; gap: 8px; padding: 12px 14px 6px; }
+.bell-panel h2 { margin: 0; font-size: 1rem; }
+.bell-panel header .muted { font-size: 0.8rem; }
+.bell-list { list-style: none; margin: 0; padding: 0; }
+.bell-list li { display: flex; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.bell-list li[data-active="false"] { opacity: 0.6; }
+.bell-list li[data-active="false"] .toast-icon, .bell-list li[data-active="false"] .toast-kicker { color: var(--muted); }
+.link-btn { margin-top: 6px; padding: 0; font: inherit; font-size: 0.85rem; background: none; border: 0; color: var(--accent); cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }
+.bell-empty { margin: 0; padding: 8px 14px 12px; color: var(--muted); font-size: 0.9rem; }
+.bell-settings { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px 12px; border-top: 1px solid var(--line); font-size: 0.88rem; }
+.bell-settings label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+.bell-settings p { margin: 0; font-size: 0.8rem; }
+@media (max-width: 640px) {
+  .toaster, .shell:has(.live) .toaster { top: auto; bottom: 12px; right: 12px; transform: none; width: calc(100vw - 24px); flex-direction: column-reverse; }
+  .bell-panel { position: fixed; top: 56px; right: 12px; }
+}
