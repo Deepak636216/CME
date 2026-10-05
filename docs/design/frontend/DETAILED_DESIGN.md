@@ -88,7 +88,7 @@ LiveStream.start():
 
 **Planned changes:**
 
-- [D2/F3] Validate every message against the shared schema before applying it; on failure, count it in `conn`, drop it and resync.
+- ✅ [D2/F3] Built: every message, `GET /state` response and cached state is validated against the shared schemas before use; a bad one is counted in `conn.invalid`, never applied, and followed by a resync.
 - [D3] Handle `hello`: if `minClient > CLIENT_PROTOCOL`, save the cache and reload once.
 - [S2] On close code 1012, wait a random 0–3 s; on 1013, poll.
 

@@ -152,7 +152,20 @@ The site is public and read-only, with no accounts, so the risks are abuse, inje
 | DOC2 | No decision records | Short ADRs in `docs/design/adr/` for the decisions that are hard to undo: one DO as single writer; DO SQLite; physics shared with the client; snapshot+delta over WS; frontend-first with a mock | P2 |
 | DOC3 | No runbook | `docs/ops/RUNBOOK.md`: feed down, alarm stalled, 1027 errors, NOAA URL change, moving to the Oracle fallback | P1 |
 
-## 4. What to do, in order
+## 4. Progress
+
+P0 status, updated 2026-10-05:
+
+| Gap | Status |
+|---|---|
+| D1 schema matches the contract | ✅ `schema.sql` rewritten; loads in SQLite. The row round-trip test comes with the Worker |
+| D2 / F3 runtime validation | ✅ `packages/shared/src/schema.ts`. The client validates messages, `/state` and the cache, and resyncs on bad data (tested). Every mock message in every scenario is checked by a test |
+| T1 contract test suite | ✅ `packages/contract-tests`: 10 tests, run against the in-process mock in CI, or any server via `CONTRACT_BASE_URL` |
+| CD1 CI with lint and tests | ✅ `.github/workflows/ci.yml`: typecheck, ESLint, all tests (97), build, `npm audit`. No formatter yet (adopting one would rewrite every file; do it in its own commit) |
+| O1 freshness measured | ✅ client side: arrival delay p50/p95 on `/status` (verified: 60 s = the mock's simulated NOAA delay). 🔜 Backend share (`ingest_lag_s` in `/health`) is built with the Worker; it's specified in backend §9 |
+| S1, R1–R3, R6, X4 | ✅ in the backend design (§4.3, §5, §6, §8); built with the Worker |
+
+## 5. What to do, in order
 
 **Before writing backend code (P0):**
 

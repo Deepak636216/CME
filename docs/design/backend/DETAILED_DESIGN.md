@@ -281,7 +281,7 @@ client → {type:"resync"} on a seq gap → server sends a snapshot
 
 A socket that sends nothing (no pong) for 45 s is closed [S4].
 
-The hello message is a protocol addition. Old clients ignore unknown message types (`isServerMessage` returns false), so it is backward compatible.
+The hello message is a protocol addition. Old clients ignore unknown message types (`checkServerMessage` reports them as unknown), so it is backward compatible.
 
 ## 8. Security
 

@@ -50,23 +50,31 @@ Rules:
 
 These are tested end to end in `apps/web/test/stream.test.ts`, including under chaos (latency, drops, skipped messages, HTTP 503s).
 
-## 3. Validation [D2]
+## 3. Validation [D2] (built)
 
-**Today:** `isServerMessage()` checks only `type`, `seq` and `ts`.
-
-**Design:**
-
-- One schema per type in `packages/shared/src/schema.ts`. The TypeScript types are **inferred from the schemas**, so the two can't drift.
-- **Server:** validates upstream data after normalising and every query parameter. It never sends a message that fails its own schema (asserted in tests).
-- **Client:** validates each message in `LiveStream.onMessage`. A failure is counted (`conn.invalid`), dropped and followed by a resync, so the store is never partly updated.
-
-Numbers are checked for being finite. Arrays in a series are checked for equal length. Lists are capped (e.g. ≤ 2,000 flares) as a cheap guard against a broken upstream.
+- **Schemas** live in `packages/shared/src/schema.ts` (zod 4, `zod/mini` build). The interfaces in `index.ts` stay the readable reference. Compile-time `Same<>` checks make `tsc` fail if a schema and its interface disagree (tested by breaking one on purpose).
+- **What's checked:**
+  - Every number is finite.
+  - Series columns are as long as `t`, and `t` never goes backwards.
+  - Enums are closed.
+  - Lists are capped (`LIMITS`: e.g. ≤ 2,000 flares, ≤ 20,160 series rows), a cheap guard against a broken upstream.
+  - A missing sample is `null` (JSON has no NaN): `Sample = number | null`.
+- **Client** (`stream/client.ts`) validates every socket message, every `GET /state` response and the IndexedDB cache before use:
+  - An unknown message type is ignored.
+  - Any other failure is never applied. It is counted in `conn.invalid` (shown on `/status` with the reason), and if it carried a `seq`, the client resyncs.
+  - A cache that no longer matches is skipped.
+- **Server:**
+  - The mock validates `/history` queries with `historyQuerySchema`.
+  - A test asserts that every message the mock sends in every scenario matches the schemas.
+  - The Worker must do the same, and also validate upstream data after normalising.
+- **Cost:** about 9 kB gzipped in the boot bundle.
 
 ## 4. Versioning [D3, D4]
 
 | Change | Allowed within `/api/v1` and protocol 1? |
 |---|---|
-| New optional field, new message type, new enum value the client can ignore | Yes. The client treats unknown alert rules as generic watches and ignores unknown message types |
+| New optional field, new message type | Yes. Old clients drop unknown fields and ignore unknown message types |
+| New enum value (e.g. a new alert rule) | Only together with raising `minClient` in `hello`: clients validate enums strictly, so an old tab would reject the message and resync. Raising `minClient` makes old tabs reload first |
 | Renamed or removed field, changed unit or meaning | No: new protocol version, with `minClient` raised in `hello` and the `/api/v2` path |
 
 - Every contract change gets a line in `packages/shared/CHANGELOG.md`.
@@ -112,19 +120,24 @@ Constants: `AU_KM`, `R_SUN_KM`, `DONKI_R0_KM = 21.5 Rs`, `DEFAULT_GAMMA = 0.2e-7
 - It stays as the frontend's dev server and the reference for the contract suite.
 - **A behaviour change goes into the mock first**, with a test; then into the Worker, which must pass the same suite [T1].
 
-## 7. Contract test suite (planned) [T1]
+## 7. Contract test suite [T1] (built)
 
-`packages/contract-tests` runs with `BASE_URL=<server>` and an optional `CONTROL` adapter that can trigger events: `/mock/*` on the mock, a fixture upstream on `wrangler dev`.
+`packages/contract-tests` (`npm run test:contract`) runs every test against:
+
+- the in-process mock (the default, part of `npm test` and CI), or
+- any server: `CONTRACT_BASE_URL=http://…`, plus `CONTRACT_CONTROL=mock` if that server has the `/mock/*` controls, and `CONTRACT_WAIT_MS=150000` for a real-time server, which sends a delta about once a minute.
+
+Every message and response is checked against the schemas. Tests that need to trigger events are skipped when the server can't be driven.
 
 | Test | Asserts |
 |---|---|
 | `GET /state` | Valid `LiveState`; series sorted; 6 h window |
-| Stream boot | `hello` (when supported), then snapshot or deltas from `since`; seqs are consecutive |
+| Stream boot | snapshot first, then consecutive seqs (`hello` to be added with protocol versioning, P1) |
 | Resume | Drop, reconnect with `?since=n`: receives exactly `n+1…` |
-| Too old | `?since=0` → snapshot |
+| Can't replay | `?since` ahead of the server (it restarted) → snapshot |
 | Resync | `{type:"resync"}` → snapshot |
 | Alert delivery | Triggered test alert arrives in < 1 s; appears in `state.alerts` |
-| History | Shape, snapping rules, 7-day limit |
+| History | Shape, inside the requested range, 400 on bad queries (snapping rules with P1 C1) |
 | Events | Filters by type and `since` |
 | Security | `/mock/*` → 404 (Worker only); bad `Origin` refused (Worker only) |
 
