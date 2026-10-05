@@ -56,12 +56,14 @@ The detailed designs that close these gaps are [frontend/DETAILED_DESIGN.md](fro
 
 Priority: **P0** fix before the backend is built · **P1** before public launch · **P2** after launch.
 
+Each priority also has its own checklist: [GAPS_P0.md](GAPS_P0.md) · [GAPS_P1.md](GAPS_P1.md) · [GAPS_P2.md](GAPS_P2.md).
+
 ### 3.1 Data model and contract
 
 | # | Gap | Evidence | Recommendation | P |
 |---|---|---|---|---|
-| D1 | The DB schema has drifted from the contract | `schema.sql`: `alert.id INTEGER AUTOINCREMENT`, but the contract uses deterministic string ids (`CME_EARTH:<cmeId>`), which de-duplication depends on. The schema has no `title`/`message`; its `rule` comment lists 3 of 6 rules; `flare` lacks `status`, `lat`, `lon`. | Make the contract the source of truth; corrected DDL in [backend/DETAILED_DESIGN.md §4](backend/DETAILED_DESIGN.md#4-storage). Add a test that a row round-trips to the shared type. | P0 |
-| D2 | No runtime schema validation | TECH_STACK chooses zod, but none is installed. The client's `isServerMessage` only checks `type`, `seq` and `ts`, so a malformed delta could corrupt the store. Upstream NOAA JSON is not validated in the design either. | One schema per message in `packages/shared` (zod or valibot); see [contract §3](contract/DETAILED_DESIGN.md#3-validation). Validate upstream payloads strictly (reject and flag the feed); validate on the client at the boundary, and drop and resync on failure. | P0 |
+| D1 | The DB schema has drifted from the contract | `schema.sql`: `alert.id INTEGER AUTOINCREMENT`, but the contract uses deterministic string ids (`CME_EARTH:<cmeId>`), which de-duplication depends on. The schema has no `title`/`message`; its `rule` comment lists 3 of 6 rules; `flare` lacks `status`, `lat`, `lon`. | Make the contract the source of truth; corrected DDL in [backend/DETAILED_DESIGN.md: Storage](backend/DETAILED_DESIGN.md#storage). Add a test that a row round-trips to the shared type. | P0 |
+| D2 | No runtime schema validation | TECH_STACK chooses zod, but none is installed. The client's `isServerMessage` only checks `type`, `seq` and `ts`, so a malformed delta could corrupt the store. Upstream NOAA JSON is not validated in the design either. | One schema per message in `packages/shared` (zod or valibot); see [contract: Validation](contract/DETAILED_DESIGN.md#validation-and-versioning). Validate upstream payloads strictly (reject and flag the feed); validate on the client at the boundary, and drop and resync on failure. | P0 |
 | D3 | No protocol version on the socket | `/api/v1` versions REST, but a WS message has no version, and old tabs stay open for days. | Server sends `{type:"hello", protocol: 1, minClient: 1}` first; the client reloads itself (after a cache save) when `minClient` exceeds its own. Additive changes only within a version. | P1 |
 | D4 | Contract changes aren't reviewed as such | Fields were added during frontend work (`staleAfterS`, `TEST`) with no changelog. | A `CHANGELOG` section in `packages/shared`, and the contract test suite (T1) gating changes. | P2 |
 
@@ -74,13 +76,13 @@ Priority: **P0** fix before the backend is built · **P1** before public launch 
 | R3 | Restart rules not written down | On DO start: `blockConcurrencyWhile` to run migrations and rebuild memory from SQLite; `seq` and the delta are committed in the **same transaction** before broadcast, so a crash can't reuse a seq | P0 |
 | R4 | Alarm-stall detection only re-arms | The cron watchdog also records `alarm_lag_s`; over 30 s, it is logged as an error and `/health` turns `degraded` | P1 |
 | R5 | Single Durable Object is a single point of failure | Accepted for v1 (the platform restarts DOs in seconds; FR-9 covers the client). Write down the target: RTO < 1 min, RPO = last committed tick. The Oracle fallback must be a tested runbook, not just a paragraph | P1 |
-| R6 | Alert evaluation lacks hysteresis rules in the design | The mock has them (Bz: 3 points ≤ −10 nT to raise, 10 points > −5 nT to clear); copy these into the backend design as the spec ([backend §6](backend/DETAILED_DESIGN.md#6-alert-engine)) | P0 |
+| R6 | Alert evaluation lacks hysteresis rules in the design | The mock has them (Bz: 3 points ≤ −10 nT to raise, 10 points > −5 nT to clear); copy these into the backend design as the spec ([backend: Alert engine](backend/DETAILED_DESIGN.md#alert-engine)) | P0 |
 
 ### 3.3 Scalability and cost
 
 | # | Gap | Recommendation | P |
 |---|---|---|---|
-| S1 | **Write budget omits `delta_log`.** Every delta is a row write, and pruning it is another. One delta per tick (every 5 s) would be 17k + 17k a day; one per second, 86k + 86k, over the 100k free cap | Emit a delta only when something changed (in practice ~3/min, about 4k a day). Keep the 1 h replay log as an **in-memory ring**, persisting only `seq`. After a restart, clients resync with a snapshot, which is cheap. See [backend §4.3](backend/DETAILED_DESIGN.md#43-what-is-persisted-and-what-isnt) | P0 |
+| S1 | **Write budget omits `delta_log`.** Every delta is a row write, and pruning it is another. One delta per tick (every 5 s) would be 17k + 17k a day; one per second, 86k + 86k, over the 100k free cap | Emit a delta only when something changed (in practice ~3/min, about 4k a day). Keep the 1 h replay log as an **in-memory ring**, persisting only `seq`. After a restart, clients resync with a snapshot, which is cheap. See [backend: Storage](backend/DETAILED_DESIGN.md#storage) | P0 |
 | S2 | Reconnect storm after a deploy or restart: every socket drops at once | The client already uses jittered backoff (base 500 ms); also spread the first retry over 0–3 s after a server-initiated close (close code 1012), and serve `/state` from a cached serialised string | P1 |
 | S3 | Broadcast cost | Serialise each message **once** and send the same string to every socket. Count sockets; above a limit (start at 5,000), new connections get a 1013 close and the client falls back to polling | P1 |
 | S4 | Slow consumers | Workers can't read `bufferedAmount`; drop a socket that hasn't answered a ping for 45 s (the client already drops sockets silent for 40 s) | P2 |

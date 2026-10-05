@@ -69,65 +69,6 @@ def nouns_usecases():
     d.render(OUT, "01-nouns-usecases")
 
 
-def client_state():
-    d = Diagram()
-    d.title(40, 20, "Frontend - client state schema (Zustand store + IndexedDB)",
-            "The browser's 'database'.  Server messages write to liveSlice; the 3D loop reads it with getState() - no React re-render per frame.")
-
-    tw = 470
-    d.table("live", 40, 120, "liveSlice  (written by stream)", [
-        "seq        number          last applied delta",
-        "serverTime number          for clock-skew fix",
-        "xray       Ring<XrayPt>    7 d x 1 min = 10,080",
-        "wind       Ring<WindPt>    V, n, Bz, Bt, newell",
-        "regions    Region[]        today's sunspots",
-        "flares     Map<id, Flare>",
-        "cmes       Map<id, Cme & Forecast>",
-        "alerts     Alert[]         active + recent",
-        "feeds      Record<feedId, FeedStatus>",
-    ], "purple", w=tw + 60)
-    d.table("conn", 40, 470, "connSlice", [
-        "status     connecting|live|stale|offline",
-        "lastSeq    number",
-        "lastMsgAt  number          drives badge",
-        "rttMs      number          ping/pong",
-        "retries    number          backoff step",
-    ], "orange", w=tw + 60)
-    d.table("ui", 640, 120, "uiSlice  (user choices)", [
-        "scaleMode  'true' | 'readable'",
-        "selected   {kind, id} | null",
-        "timeMode   'live' | 'replay'",
-        "cursorT    number          replay time",
-        "speed      1 | 60 | 600    replay rate",
-        "muted      Set<AlertRule>",
-    ], "blue", w=tw)
-    d.table("hist", 640, 400, "historySlice  (replay, lazy)", [
-        "key        series|res|from|to",
-        "points     Float64Array    columnar",
-        "events     Flare[] | Cme[]",
-        "loadedAt   number",
-    ], "teal", w=tw)
-    d.table("idb", 640, 620, "IndexedDB 'cme-web'", [
-        "lastState  {seq, state, savedAt}",
-        "alertAcks  {alertId, ackedAt}",
-        "prefs      {scaleMode, muted}",
-    ], "gray", w=tw)
-
-    d.zone("msg", 1200, 120, 620, 640, "Server message -> where it goes", "yellow")
-    msgs = [("m1", "snapshot", "replace liveSlice\nset seq"),
-            ("m2", "delta", "patch changed keys\nseq + 1 (gap -> resync)"),
-            ("m3", "alert", "push alerts[]\nshow AlertToast"),
-            ("m4", "ping", "update rttMs\nlastMsgAt")]
-    y = 180
-    for id, k, s in msgs:
-        d.box(id, 1230, y, 170, 80, k, "white", font=MONO)
-        d.box(id + "t", 1460, y, 320, 80, s, "white", size=15)
-        d.arrow(id, id + "t")
-        y += 130
-    d.text("save", 1230, 700, "every 30 s and on page hide: liveSlice -> IndexedDB.lastState", size=14,
-           color="#f08c00")
-    d.render(OUT, "02-client-state")
-
 
 def api_flow():
     d = Diagram()
@@ -261,5 +202,5 @@ def components():
 
 if __name__ == "__main__":
     import sys
-    for name in sys.argv[1:] or ["nouns_usecases", "client_state", "api_flow", "components"]:
+    for name in sys.argv[1:] or ["nouns_usecases", "api_flow", "components"]:
         globals()[name]()

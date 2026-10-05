@@ -1,31 +1,16 @@
-# Contract layer detailed design: `packages/shared`, `packages/physics`, `apps/mock`
+# Contract design: HLD + LLD
 
-The layer both sides depend on. It holds:
+The layer both sides depend on:
 
-- the message and data shapes (`shared`)
-- the formulas that must give the same answer on the server and in the browser (`physics`)
-- a stand-in server that implements the contract (`mock`), used to build and test the frontend before the backend exists.
+- `packages/shared`: shapes and messages
+- `packages/physics`: formulas that must give the same answer on the server and in the browser
+- `apps/mock`: a reference server that implements the contract
 
-Gap ids from [../GAP_ANALYSIS.md](../GAP_ANALYSIS.md) are in brackets.
+Gap ids such as [D2] point to [../GAP_ANALYSIS.md](../GAP_ANALYSIS.md).
 
-## 1. Packages and who uses them
+Diagrams are Excalidraw: sources in [diagrams/src/](diagrams/src/), generator in [../_tools/hld_lld.py](../_tools/hld_lld.py).
 
-```
-packages/shared   ← apps/web, apps/mock, apps/worker (planned), packages/contract-tests (planned)
-packages/physics  ← apps/web (CME fronts, classes, locations), apps/mock, apps/worker (planned)
-apps/mock         ← apps/web dev server (Vite proxy) and apps/web/test/stream.test.ts
-```
-
-Rules:
-
-- `shared` and `physics` have **no runtime dependencies**, run in Node, Workers and browsers, and never import from an app.
-- **Units are fixed:** unix seconds UTC; km and km/s; W/m² for flux; nT for the field; heliographic degrees with lat north positive, lon west positive, and (0,0) = the point facing Earth.
-
-## 2. `packages/shared`: the contract
-
-### 2.1 Shapes (as built)
-
-| Type | Key fields | Notes |
+| Level | Diagram | Answers |
 |---|---|---|
 | `Clock` | `now, speed, mode (live \| mock-replay \| mock-scenario), scenario` | The client computes the current server time from it |
 | `XraySeries`, `WindSeries` | columnar arrays `t[]` + one array per field | Small JSON, zero-copy into `Float64Array` |

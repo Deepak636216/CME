@@ -1,40 +1,10 @@
-# Frontend detailed design
+# Frontend design: HLD + LLD
 
-Builds on [README.md](README.md) (use cases UF1–UF9, routes) and [scene-plan.md](scene-plan.md) (the build log of the scene). This file describes `apps/web` **as built** (through Phase 3 and Phase 4 alerts) and the design of what's left (Replay, Events, Sun page). Gap ids from [../GAP_ANALYSIS.md](../GAP_ANALYSIS.md) are in brackets.
+`apps/web` **as built** (through Phase 3 and Phase 4 alerts), plus the design of what's left (Replay, Events, Sun page). Gap ids such as [F1] point to [../GAP_ANALYSIS.md](../GAP_ANALYSIS.md). The scene's build log is in [scene-plan.md](scene-plan.md).
 
-## 1. Goals that shape every decision
+Diagrams are Excalidraw: sources in [diagrams/src/](diagrams/src/), generators in [../_tools/](../_tools/) (`hld_lld.py`, `frontend_diagrams.py`).
 
-1. **Never wait on the network to draw** (NFR-5, FR-9). Paint from the IndexedDB cache, then REST, then the socket.
-2. **60 fps without React** (NFR-4). Anything that moves every frame is computed in `useFrame` from store snapshots read with `getState()`, and written to three.js objects or DOM nodes through refs. React re-renders about once a second, for age tickers and charts.
-3. **One source of truth per kind of state.** The stream writes `liveStore`; user input writes `useUi`; alert reading state lives in `useAlerts`. Nothing else writes them.
-4. **Server-time everywhere.** The scene, ages and countdowns use `serverNow(clock, clockAt)`, never the device clock directly, so mock speed-ups and wrong device clocks behave.
-
-## 2. Layers
-
-```
-┌ shell/   AppShell · TopBar · ConnectionBadge · FreshnessBadge · AlertBell · AlertToaster · useAlertDelivery
-├ pages/   Live · Status  (built)   Sun · Replay · Events · EventDetail  (placeholders)
-├ hud/     SceneClock · SceneControls · SceneKey · CmeCard · InfoCard · charts/{XrayChart, WindPanel, HudPanels}
-│          DataAge · MinButton · PanelBoundary · SceneBoundary · SceneFallback
-├ scene/   SceneCanvas (lazy) · SunMesh · SunActivity · PlanetBodies · OrbitLines · L1Probe · CmeShells
-│          SunEarthLine · CameraRig · HitTarget · Labels · declutter · materials · sizes · time · motion · textures
-├ stream/  client.ts (LiveStream) · apply.ts · useLiveStream.ts
-├ store/   live.ts · ui.ts · alerts.ts            (planned: history.ts)
-└ lib/     pure functions, unit-tested: series · ephemeris · cme · heliographic · sunActivity · info · travel
-           chartData · format · freshness · alerts · clock · api · localCache · chime · webgl
-```
-
-**Dependency rule:**
-
-- `lib/` imports nothing from the app except types, and no React.
-- `stream/` imports `lib/` and `store/` only, so it runs under `node:test` against the real mock.
-- `scene/` and `hud/` read the stores; only `stream/` writes `liveStore`.
-
-## 3. State
-
-### 3.1 `liveStore` (`store/live.ts`): written only by `stream/apply.ts`
-
-| Field | Type | Notes |
+| Level | Diagram | Answers |
 |---|---|---|
 | `seq` | `number \| null` | Last applied server seq; `null` until the server has answered (cached data may be on screen) |
 | `clock`, `clockAt` | `Clock`, wall seconds | `serverNow()` = `clock.now + (wall − clockAt) × clock.speed` |
@@ -178,51 +148,6 @@ The scene already gets its time from one function, `sceneTime()` in `scene/time.
 
 | Failure | What the user sees |
 |---|---|
-| Offline at boot | Cached state with "SAVED" on the clock and the data ages |
-| Socket drops | Badge "Reconnecting…", then catches up via `?since` with no reload |
-| 3 failed reconnects | Badge "Polling"; numbers keep updating every 30 s |
-| Seq gap / bad message | Silent resync (snapshot) |
-| Feed stale on the server | Amber age next to its values, FreshnessBadge, `FEED_STALE` alert |
-| No WebGL | `SceneFallback`: the same facts as text |
-| Scene chunk fails / throws | `SceneBoundary` shows the fallback; the rest of the page keeps working |
-| A chart or card throws | `PanelBoundary`: only that panel shows an error |
-| IndexedDB blocked | Works without cache; read alerts aren't remembered |
-| Notifications blocked / unsupported | The bell explains; toasts and sound still work |
-
-## 7. Accessibility
-
-What is already built:
-
-- Every scene label is a real button (Tab + Enter).
-- Charts have keyboard reading and table views.
-- Alerts use shape as well as colour, and `role="alert"` for warnings.
-- Reduced motion is respected.
-- Colour pairs were checked.
-- Text equivalents exist for the scene (cards, fallback).
-
-**Planned [F5]:** a WCAG 2.1 AA audit, with a focus on the bell dialog (focus trap and return), the toast focus order, and contrast of muted text on panels.
-
-## 8. Security [X1, X3]
-
-- **No raw HTML from data:** feed text is always rendered as React text. Add ESLint `react/no-danger`.
-- **Same-origin API:** no secrets in the bundle.
-- **Pages `_headers`:**
-  - On `/*`: the CSP from the gap analysis (`connect-src 'self'` covers `wss:` on the same origin in modern browsers; add `wss://<domain>` explicitly for Safari), HSTS, nosniff, `Referrer-Policy`, and `Permissions-Policy: camera=(), microphone=(), geolocation=()`.
-  - `/assets/*` immutable; `index.html` `no-cache`.
-
-## 9. Testing
-
-| Level | Now | Planned |
-|---|---|---|
-| Unit (`node:test`) | 13 files: series, apply, ephemeris, sizes, travel, chartData, format, heliographic, sunActivity, cme, info, freshness, alerts | history parsing, timeline mapping |
-| Integration | `stream.test.ts`: LiveStream against the in-process mock with chaos (gap, drop, half-open, polling, cache, alert < 1 s) | Moved into `packages/contract-tests` [T1] |
-| End-to-end | Ad hoc Playwright runs during development | `apps/web/e2e/` in CI: boot, big-storm alerts + "Show me", feed-outage stale state, reconnect, phone layout; screenshot diffs with a frozen clock [T2] |
-| Performance | React-commit count measured by hand | Lighthouse CI budget; commit-rate test ≤ 2/s [T3] |
-
-## 10. Open decisions
-
-| Decision | Options | Recommendation |
-|---|---|---|
-| Schema library for runtime validation | zod (bigger, familiar) vs valibot (~1 kB per schema, tree-shaken) | valibot on the client, the same schemas on the server, if bundle size matters; otherwise zod everywhere for one API |
-| Sun page | Separate route vs the Live page's Sun view + region list | A region list panel on Live + `/sun` as a deep link to the Sun view, to avoid a second canvas |
-| Service worker | Hand-written vs `vite-plugin-pwa` | Hand-written, ~60 lines: app shell cache + `showNotification`; nothing else needs Workbox |
+| Runtime schema library | valibot on the client if bundle size matters; otherwise zod everywhere |
+| Sun page | Region list on Live, with `/sun` as a deep link to the Sun view (no second canvas) |
+| Service worker | Hand-written, about 60 lines: app-shell cache + `showNotification` |

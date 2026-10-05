@@ -8,6 +8,7 @@ clears the canvas, adds the elements, and exports .excalidraw + .png.
 Usage: python docs/design/_tools/build_all.py
 """
 import json
+import re
 import subprocess
 import sys
 import time
@@ -39,6 +40,8 @@ class Diagram:
         lines = s.split("\n")
         w = w or int(max(len(l) for l in lines) * size * 0.56) + 10
         h = int(len(lines) * size * 1.25) + 4
+        # renderers collapse runs of spaces; keep column alignment with NBSP
+        s = re.sub(r"(?m)(^ +| {2,})", lambda m: " " * len(m.group()), s)
         self.els.append({"id": id, "type": "text", "x": x, "y": y, "width": w, "height": h,
                          "text": s, "fontSize": size, "fontFamily": font, "strokeColor": color,
                          "textAlign": align})

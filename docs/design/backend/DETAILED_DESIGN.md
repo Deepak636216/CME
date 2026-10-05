@@ -1,150 +1,10 @@
-# Backend detailed design
+# Backend design: HLD + LLD
 
-Builds on [README.md](README.md) (use cases, endpoints, component sketch) and [../TECH_STACK.md](../TECH_STACK.md). It closes the backend gaps in [../GAP_ANALYSIS.md](../GAP_ANALYSIS.md); gap ids are shown in brackets, e.g. [S1].
+`apps/worker` is one Cloudflare Worker plus one Durable Object. **Status:** not built yet. The mock (`apps/mock`) implements the same contract and is the reference behaviour. Gap ids such as [S1] point to [../GAP_ANALYSIS.md](../GAP_ANALYSIS.md).
 
-**Status:** not built. The mock (`apps/mock`) implements the same contract and is the reference behaviour; where this design and the mock agree, the mock's tests are the spec.
+Diagrams are Excalidraw: sources in [diagrams/src/](diagrams/src/), generator in [../_tools/hld_lld.py](../_tools/hld_lld.py).
 
-## 1. Responsibilities
-
-| The backend does | It does not |
-|---|---|
-| Poll NOAA and NASA once for everyone, on each feed's cadence | Compute anything per request |
-| Normalise, validate and store samples and events | Compute positions of planets or CME fronts per frame (the browser does) |
-| Detect flares, attach them to regions, forecast CME arrival (DBM), compute Newell coupling | Keep per-user state (no accounts in v1) |
-| Raise and clear alerts with de-duplication and hysteresis | Send email, SMS or push (out of scope) |
-| Push one ordered stream of changes to every browser; replay what a reconnecting browser missed | Serve the static site (Cloudflare Pages does) |
-| Answer history and event queries | |
-
-## 2. Runtime topology
-
-```
-                 ┌──────────────── Cloudflare ────────────────────────────────────────────┐
- Browser ──HTTPS─┤ Pages (static, hashed assets)                                          │
-    │            │                                                                        │
-    └──/api/v1 ──┤ Worker (Hono router) ── stub.fetch() ──► SpaceWeatherHub (1 Durable Object)
-                 │   • rate-limit rule (WAF)                 • alarm loop (every ≤5 s)   │
-                 │   • edge cache for /history               • memory: LiveState + rings │
-                 │                                           • SQLite (ctx.storage.sql)  │
-                 │ Cron trigger (every minute) ──► hub.watchdog()   • WebSockets (hibernatable)
-                 └───────────────────────────────────────────────┬────────────────────────┘
-                                                                 │ fetch, If-None-Match
-                                                  NOAA SWPC JSON · NASA DONKI
-```
-
-- **One Durable Object, named `"hub"`** (`idFromName("hub")`), with `locationHint: "enam"` so it runs near NOAA's US-east servers. It is the **single writer**: every poll, computation, write and broadcast happens on its one thread, so there are no races to design around.
-- **The Worker is stateless.** It routes, validates query parameters, applies the edge cache, and forwards to the DO. It never polls.
-- **Two environments**, `staging` and `production`, each with its own DO namespace and secrets [CD2].
-
-## 3. Components
-
-```
-apps/worker/src/
-  index.ts              Worker entry: fetch() → Hono app; scheduled() → hub.watchdog()
-  routes.ts             /api/v1/* routes; query validation (shared schemas); edge cache for /history
-  security.ts           Origin allow-list for /stream, security headers on API responses
-  hub/
-    SpaceWeatherHub.ts  the Durable Object: constructor (restore), alarm(), fetch(), webSocket* handlers
-    scheduler.ts        per-feed due times, adaptive windows, backoff after failures
-    feeds.ts            feed table (§5.1): URL, cadence, staleAfter, parser
-    pollers.ts          fetchFeed(): timeout, ETag, size cap, status → FeedResult
-    normalize/          goesXray.ts, goesFlares.ts, rtsw.ts, regions.ts, donki.ts   (JSON → rows, validated)
-    compute/
-      flares.ts         flare lifecycle from flare list + live flux; region attach
-      cmes.ts           Earth-directed test + DBM forecast (packages/physics)
-      wind.ts           Newell per row (packages/physics)
-      alerts.ts         rule evaluation, hysteresis, de-dup (§6)
-    state.ts            in-memory LiveState, ring buffers, delta builder
-    deltaLog.ts         in-memory ring of the last hour of sequenced messages
-    repo.ts             SQLite: migrations, upserts, queries, pruning
-    sockets.ts          accept, hello, broadcast-once, close codes
-    metrics.ts          counters + structured log lines (§9)
-  migrations/           0001_init.sql, 0002_… (forward-only, additive)
-```
-
-Hosting adapter: `hub/` depends only on two small interfaces, `Storage` (SQL exec/query) and `Sockets` (accept/send/list). They are implemented for Durable Objects now and for Node (`better-sqlite3` + `ws`) for the Oracle fallback ([TECH_STACK §4](../TECH_STACK.md#4-fallback-if-cloudflare-limits-are-ever-hit)).
-
-## 4. Storage
-
-### 4.1 Schema (corrected to match the contract) [D1]
-
-Source of truth for shapes is `packages/shared`; the table columns map one-to-one to its fields. Times are unix seconds UTC. This replaces [schema.sql](schema.sql), which is updated to match.
-
-```sql
-CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);           -- schema_v, seq, alarm_last_at
-
-CREATE TABLE feed_status (
-  feed_id     TEXT PRIMARY KEY,          -- FeedId: goes_xray | goes_flares | rtsw | regions | donki
-  etag        TEXT,
-  last_ok_at  INTEGER,
-  data_ts     INTEGER,                   -- newest data time in the feed
-  error       TEXT,                      -- last error, URL query string stripped [X4]
-  fail_count  INTEGER NOT NULL DEFAULT 0 -- consecutive failures (drives backoff)
-);
-
-CREATE TABLE xray_sample (ts INTEGER PRIMARY KEY, flux_long REAL, flux_short REAL, satellite INTEGER) WITHOUT ROWID;
-
-CREATE TABLE wind_sample (
-  ts INTEGER PRIMARY KEY, speed REAL, density REAL, temperature REAL,
-  bx REAL, by REAL, bz REAL, bt REAL, newell REAL
-) WITHOUT ROWID;
-
-CREATE TABLE sunspot_region (
-  region_no INTEGER NOT NULL, observed_on TEXT NOT NULL,          -- YYYY-MM-DD
-  lat REAL, lon REAL, location TEXT,                              -- lon at observed time (rotated on read)
-  area_msh INTEGER, mag_class TEXT, spot_count INTEGER, p_m INTEGER, p_x INTEGER,
-  PRIMARY KEY (region_no, observed_on)
-) WITHOUT ROWID;
-
-CREATE TABLE flare (
-  id TEXT PRIMARY KEY,                   -- begin time ISO from GOES, stable
-  begin_at INTEGER NOT NULL, peak_at INTEGER, end_at INTEGER,
-  cls TEXT NOT NULL, peak_flux REAL NOT NULL,
-  status TEXT NOT NULL,                  -- rising | decaying | ended
-  region_no INTEGER, lat REAL, lon REAL
-);
-CREATE INDEX flare_begin ON flare(begin_at);
-
-CREATE TABLE cme (
-  id TEXT PRIMARY KEY,                   -- DONKI activity id
-  launch_at INTEGER NOT NULL,            -- time at 21.5 Rs
-  speed REAL NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL, half_angle REAL NOT NULL,
-  earth_directed INTEGER NOT NULL, flare_id TEXT, updated_at INTEGER NOT NULL
-);
-CREATE INDEX cme_launch ON cme(launch_at);
-
-CREATE TABLE cme_forecast (
-  cme_id TEXT PRIMARY KEY REFERENCES cme(id),
-  computed_at INTEGER NOT NULL, eta INTEGER, arrival_speed REAL, gamma REAL NOT NULL, w REAL NOT NULL
-);
-
-CREATE TABLE alert (
-  id TEXT PRIMARY KEY,                   -- deterministic: "<RULE>:<refId>", the de-dup key
-  rule TEXT NOT NULL,                    -- FLARE_M | FLARE_X | CME_EARTH | BZ_SOUTH | FEED_STALE | TEST
-  level TEXT NOT NULL,                   -- watch | warning
-  title TEXT NOT NULL, message TEXT NOT NULL,
-  ref_type TEXT NOT NULL, ref_id TEXT NOT NULL,
-  raised_at INTEGER NOT NULL, cleared_at INTEGER
-);
-CREATE INDEX alert_raised ON alert(raised_at);
-```
-
-Changes from the old file:
-
-- `alert.id` is the deterministic string, with `title` and `message` added.
-- `flare` gains `status`, `lat` and `lon`.
-- `feed_status` gains `fail_count`.
-- `delta_log` is removed (see §4.3).
-- Sample tables are `WITHOUT ROWID`: one B-tree per table, which means fewer row writes.
-
-### 4.2 Migrations
-
-- `meta.schema_v` holds the applied version. On start, inside `blockConcurrencyWhile`, the DO applies each pending `migrations/NNNN_*.sql` in one transaction.
-- Migrations are **forward-only and additive** (new tables, new nullable columns). A rollback of the code never needs a down-migration [CD3].
-- A test rebuilds the DB from all migrations and checks that every table round-trips to the shared types.
-
-### 4.3 What is persisted and what isn't [S1, R3]
-
-| Data | Where | Why |
+| Level | Diagram | Answers |
 |---|---|---|
 | Samples, regions, flares, CMEs, forecasts, alerts, feed status | SQLite | Survive restarts; needed for `/history`, `/events` and rebuilding memory |
 | `seq` | SQLite `meta`, written in the **same transaction** as the tick's data | A crash can never reuse a seq for different content |
@@ -329,14 +189,7 @@ UptimeRobot checks `/health` for `"status":"ok"`.
 
 | Level | What |
 |---|---|
-| Unit | Normalisers on saved real payloads (`docs/reconnection/data/*.json`) including bad rows; flare lifecycle; alert rules (port `apps/mock/test/engine.test.ts`) |
-| Contract [T1] | `packages/contract-tests`, run with `BASE_URL` against `wrangler dev` (with a fixture upstream) and against the mock. Covers snapshot+delta order, `?since` replay, resync, history shape, events, 404 on `/mock/*` |
-| Golden [T4] | A real DONKI CME's forecast ETA within ±1 min of the DBM test values |
-| Load [S5] | 1,000 sockets (k6 or a Node script) in Phase 1. Measure DO CPU per broadcast, request count and duration |
-
-## 11. Deployment
-
-- `wrangler.toml` with `[env.staging]` and `[env.production]`. The DO class is migrated with `new_sqlite_classes = ["SpaceWeatherHub"]`.
-- **CI:** on a PR, typecheck, lint, test and the contract suite run, and a preview deploy goes to staging. On `main`, it deploys to production.
-- **Rollback:** `wrangler rollback`. Schema changes are additive, so old code runs on the new schema [CD3].
-- **Restart behaviour:** a deploy restarts the DO. Sockets close with 1012 and clients reconnect over 0–3 s with `?since`. The delta ring is empty after a restart, so clients get one snapshot each. A snapshot is ~55 kB (measured on the mock), so 1,000 clients cost ~55 MB of output once, spread over the 0–3 s window.
+| Unit | Normalisers on saved real payloads (`docs/reconnection/data`), flare lifecycle, alert rules |
+| Contract [T1] | `packages/contract-tests` against `wrangler dev` and the mock (see [contract](../contract/DETAILED_DESIGN.md#physics-mock-and-contract-tests)) |
+| Golden [T4] | A real DONKI CME's forecast ETA within ±1 min |
+| Load [S5] | 1,000 sockets: DO CPU per broadcast, request count |
