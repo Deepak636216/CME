@@ -1,5 +1,7 @@
 # Backend Design
 
+> Detailed design (as built and planned): [DETAILED_DESIGN.md](DETAILED_DESIGN.md).
+
 Cloudflare Worker + one Durable Object (`SpaceWeatherHub`) that **polls, computes, stores and pushes** without stopping. Stack and hosting details are in [../TECH_STACK.md](../TECH_STACK.md).
 
 Diagrams are built in Excalidraw. The editable sources are in [diagrams/src/](diagrams/src/), and the generator is [../_tools/backend_diagrams.py](../_tools/backend_diagrams.py).

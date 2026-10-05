@@ -8,6 +8,10 @@ The design for the real-time solar alert website described in [../SCOPE.md](../S
 | [backend/](backend/README.md) | Use cases & nouns, DB schema ([schema.sql](backend/schema.sql)), API flow & endpoints, components & router |
 | [frontend/](frontend/README.md) | Use cases & UI nouns, client state schema, data flow, components & routes |
 | [PLAN.md](PLAN.md) | Phase-by-phase build plan for both sides |
+| [GAP_ANALYSIS.md](GAP_ANALYSIS.md) | Design and code checked against system-design best practice, with prioritised fixes |
+| [frontend/DETAILED_DESIGN.md](frontend/DETAILED_DESIGN.md) | The web app as built: layers, state, data flow, rendering, failure handling, and the design of Replay and Events |
+| [backend/DETAILED_DESIGN.md](backend/DETAILED_DESIGN.md) | The Worker + Durable Object in detail: storage, live loop, alert rules, API, security, observability |
+| [contract/DETAILED_DESIGN.md](contract/DETAILED_DESIGN.md) | Shared types, delivery guarantees, validation and versioning; physics; the mock as reference server |
 
 **In one line:** one Cloudflare Durable Object polls NOAA and NASA every ~5 s, computes, stores in SQLite, and pushes deltas over WebSockets. A React + three.js site on Cloudflare Pages renders them at 60 fps. Hosting costs $0.
 

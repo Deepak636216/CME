@@ -1,92 +1,60 @@
 -- SQLite schema for SpaceWeatherHub (Durable Object storage).
--- All times are unix seconds UTC. See diagrams/02-db-schema.png.
+-- All times are unix seconds UTC. Columns map one-to-one to the types in packages/shared.
+-- Design and reasoning: DETAILED_DESIGN.md section 4. The delta log is kept in memory, not here.
 
-CREATE TABLE IF NOT EXISTS meta (
-  key   TEXT PRIMARY KEY,          -- 'seq', 'schema_v'
-  value TEXT NOT NULL
-);
+CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);           -- schema_v, seq, alarm_last_at
 
 CREATE TABLE IF NOT EXISTS feed_status (
-  feed_id    TEXT PRIMARY KEY,     -- 'goes_xray', 'rtsw_wind', ...
-  etag       TEXT,
-  last_ok_at INTEGER,
-  data_ts    INTEGER,              -- newest data timestamp in the feed
-  error      TEXT
+  feed_id     TEXT PRIMARY KEY,          -- FeedId: goes_xray | goes_flares | rtsw | regions | donki
+  etag        TEXT,
+  last_ok_at  INTEGER,
+  data_ts     INTEGER,                   -- newest data time in the feed
+  error       TEXT,                      -- last error, URL query string stripped [X4]
+  fail_count  INTEGER NOT NULL DEFAULT 0 -- consecutive failures (drives backoff)
 );
 
-CREATE TABLE IF NOT EXISTS xray_sample (
-  ts         INTEGER PRIMARY KEY,
-  flux_long  REAL,                 -- 0.1-0.8 nm, W/m^2
-  flux_short REAL,                 -- 0.05-0.4 nm
-  satellite  INTEGER
-);
+CREATE TABLE IF NOT EXISTS xray_sample (ts INTEGER PRIMARY KEY, flux_long REAL, flux_short REAL, satellite INTEGER) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS wind_sample (
-  ts          INTEGER PRIMARY KEY,
-  speed       REAL,                -- km/s
-  density     REAL,                -- p/cc
-  temperature REAL,                -- K
-  bx REAL, by REAL, bz REAL,       -- nT, GSM
-  bt          REAL,
-  newell      REAL                 -- derived coupling
-);
+  ts INTEGER PRIMARY KEY, speed REAL, density REAL, temperature REAL,
+  bx REAL, by REAL, bz REAL, bt REAL, newell REAL
+) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS sunspot_region (
-  region_no   INTEGER NOT NULL,
-  observed_on TEXT    NOT NULL,    -- YYYY-MM-DD
-  lat REAL, lon REAL,              -- heliographic deg (lon relative to central meridian)
-  location    TEXT,                -- e.g. N20E46
-  area_msh    INTEGER,
-  mag_class   TEXT,
-  spot_count  INTEGER,
-  p_m INTEGER, p_x INTEGER,        -- flare probability %
+  region_no INTEGER NOT NULL, observed_on TEXT NOT NULL,          -- YYYY-MM-DD
+  lat REAL, lon REAL, location TEXT,                              -- lon at observed time (rotated on read)
+  area_msh INTEGER, mag_class TEXT, spot_count INTEGER, p_m INTEGER, p_x INTEGER,
   PRIMARY KEY (region_no, observed_on)
-);
+) WITHOUT ROWID;
 
 CREATE TABLE IF NOT EXISTS flare (
-  id        TEXT PRIMARY KEY,      -- begin time ISO
-  begin_at  INTEGER NOT NULL,
-  peak_at   INTEGER,
-  end_at    INTEGER,
-  class     TEXT,                  -- e.g. M2.3
-  peak_flux REAL,
-  region_no INTEGER                -- -> sunspot_region.region_no
+  id TEXT PRIMARY KEY,                   -- begin time ISO from GOES, stable
+  begin_at INTEGER NOT NULL, peak_at INTEGER, end_at INTEGER,
+  cls TEXT NOT NULL, peak_flux REAL NOT NULL,
+  status TEXT NOT NULL,                  -- rising | decaying | ended
+  region_no INTEGER, lat REAL, lon REAL
 );
-CREATE INDEX IF NOT EXISTS flare_peak ON flare(peak_at);
+CREATE INDEX IF NOT EXISTS flare_begin ON flare(begin_at);
 
 CREATE TABLE IF NOT EXISTS cme (
-  id             TEXT PRIMARY KEY, -- DONKI activity id
-  launch_at      INTEGER NOT NULL, -- time at 21.5 Rs
-  speed          REAL,
-  lat REAL, lon REAL,
-  half_angle     REAL,
-  earth_directed INTEGER NOT NULL DEFAULT 0,
-  flare_id       TEXT REFERENCES flare(id),
-  updated_at     INTEGER
+  id TEXT PRIMARY KEY,                   -- DONKI activity id
+  launch_at INTEGER NOT NULL,            -- time at 21.5 Rs
+  speed REAL NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL, half_angle REAL NOT NULL,
+  earth_directed INTEGER NOT NULL, flare_id TEXT, updated_at INTEGER NOT NULL
 );
+CREATE INDEX IF NOT EXISTS cme_launch ON cme(launch_at);
 
 CREATE TABLE IF NOT EXISTS cme_forecast (
-  cme_id        TEXT PRIMARY KEY REFERENCES cme(id),
-  computed_at   INTEGER NOT NULL,
-  eta           INTEGER,           -- predicted Earth arrival
-  arrival_speed REAL,
-  gamma REAL, w REAL               -- DBM drag parameter and ambient wind speed
+  cme_id TEXT PRIMARY KEY REFERENCES cme(id),
+  computed_at INTEGER NOT NULL, eta INTEGER, arrival_speed REAL, gamma REAL NOT NULL, w REAL NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS alert (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  rule       TEXT NOT NULL,        -- FLARE_M | CME_EARTH | BZ_SOUTH
-  level      TEXT NOT NULL,        -- watch | warning
-  ref_type   TEXT,                 -- flare | cme | wind
-  ref_id     TEXT,
-  raised_at  INTEGER NOT NULL,
-  cleared_at INTEGER
+  id TEXT PRIMARY KEY,                   -- deterministic: "<RULE>:<refId>", the de-dup key
+  rule TEXT NOT NULL,                    -- FLARE_M | FLARE_X | CME_EARTH | BZ_SOUTH | FEED_STALE | TEST
+  level TEXT NOT NULL,                   -- watch | warning
+  title TEXT NOT NULL, message TEXT NOT NULL,
+  ref_type TEXT NOT NULL, ref_id TEXT NOT NULL,
+  raised_at INTEGER NOT NULL, cleared_at INTEGER
 );
 CREATE INDEX IF NOT EXISTS alert_raised ON alert(raised_at);
-
-CREATE TABLE IF NOT EXISTS delta_log (
-  seq     INTEGER PRIMARY KEY,
-  ts      INTEGER NOT NULL,
-  kind    TEXT NOT NULL,           -- delta | alert
-  payload TEXT NOT NULL            -- JSON
-);
